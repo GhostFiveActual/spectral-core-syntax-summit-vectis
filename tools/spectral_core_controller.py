@@ -460,6 +460,48 @@ def repository_context(
     return "".join(sections)
 
 
+def completed_task_baseline(
+    current_task_id: str,
+) -> str:
+    """Describe completed work that later tasks must preserve."""
+    data = load_json(BACKLOG_PATH)
+    tasks = (
+        data
+        if isinstance(data, list)
+        else data.get("tasks", [])
+    )
+
+    completed = []
+
+    for task in tasks:
+        task_id = str(task.get("id", ""))
+
+        if task_id == current_task_id:
+            continue
+
+        if task.get("status") != "done":
+            continue
+
+        completed.append(
+            "- "
+            + task_id
+            + ": "
+            + str(task.get("title", ""))
+            + " // implementation commit: "
+            + str(
+                task.get(
+                    "implementation_commit",
+                    "unknown",
+                )
+            )
+        )
+
+    if not completed:
+        return "(none)"
+
+    return "\n".join(completed)
+
+
 def specialist_prompt(
     task: dict[str, Any],
     role: dict[str, Any],
@@ -490,6 +532,21 @@ PREVIOUS FAILURE OR REVIEW FEEDBACK:
 
 PREVIOUS QUALITY OUTPUT:
 {state.get("last_quality_output") or "(none)"}
+
+COMPLETED BASELINE TASKS:
+{completed_task_baseline(task["id"])}
+
+BASELINE DISCIPLINE:
+Completed tasks are established dependencies of the current
+task. Read and reuse their APIs and behavior. Do not recreate,
+replace, redesign, or weaken completed-task artifacts merely to
+make the current task easier. Modify an established artifact
+only when the CURRENT task acceptance criteria materially
+require that modification. If such a modification is necessary,
+keep it minimal and preserve all previously tested behavior.
+
+Your tests must exercise the CURRENT task. Do not replace tests
+for completed tasks with alternate assumptions about their APIs.
 
 PROJECT CONTEXT:
 {repository_context()}
@@ -675,6 +732,17 @@ TASK:
 
 ACCEPTANCE:
 {acceptance}
+
+COMPLETED BASELINE TASKS:
+{completed_task_baseline(task["id"])}
+
+BASELINE REVIEW RULE:
+Reject implementations that unnecessarily recreate, replace,
+redesign, or weaken artifacts belonging to completed tasks.
+Changes to established artifacts are acceptable only when the
+CURRENT task acceptance criteria materially require them and
+previously tested behavior remains intact. Tests for the current
+task must not invent alternate APIs for completed components.
 
 QUALITY GATE:
 {quality_output[-20000:]}
