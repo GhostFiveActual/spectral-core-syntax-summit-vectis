@@ -1,5 +1,16 @@
 # Syntax Draft
 
+Status: historical and non-normative.
+
+This document is retained as an early language-design artifact. It does not
+define current VECTIS syntax and must not be used to implement or validate the
+parser.
+
+The authoritative concrete grammar is `docs/spec/grammar.md`. The normative
+lexical contract is `docs/spec/lexical-spec.md`.
+
+## Historical Draft Content
+
 Status: normative and definitive.
 
 ## Grammar Overview

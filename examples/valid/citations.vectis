@@ -1,0 +1,5 @@
+mission "Citation collection" {
+    citations [primary_source, secondary_source];
+    analyze findings confidence;
+    publish report;
+}

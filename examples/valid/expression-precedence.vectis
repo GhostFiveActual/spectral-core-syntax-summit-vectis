@@ -1,0 +1,6 @@
+mission "Expression precedence" {
+    confidence 1 + 2 * 3;
+    when ready && score >= 0.80 || override {
+        publish report;
+    }
+}

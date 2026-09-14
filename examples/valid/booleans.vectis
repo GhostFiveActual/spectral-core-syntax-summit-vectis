@@ -1,0 +1,7 @@
+mission "Boolean literals" {
+    when true {
+        publish report;
+    } otherwise {
+        request review;
+    }
+}

@@ -1,0 +1,12 @@
+mission "Research accessibility tools" {
+    source web "accessible developer tools";
+    analyze findings;
+
+    require citations;
+
+    when confidence >= 0.80 {
+        publish report;
+    } otherwise {
+        request review;
+    }
+}
