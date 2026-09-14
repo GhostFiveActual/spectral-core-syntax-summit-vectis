@@ -110,14 +110,16 @@
       "role": "compiler_engineer",
       "reviewer": "qa_redteam",
       "title": "Implement parser",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Parses normative grammar",
         "Produces typed AST",
         "Reports syntax diagnostics",
         "Parses official examples",
         "Comprehensive parser tests"
-      ]
+      ],
+      "completed_at": "2026-09-14T18:08:38.255898+00:00",
+      "implementation_commit": "57c4efd"
     },
     {
       "id": "COMP-005",
