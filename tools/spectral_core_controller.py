@@ -42,6 +42,7 @@ LOOP_DELAY = int(
 MAX_FILES = 12
 MAX_FILE_SIZE = 150_000
 MAX_REPAIR_FAILURES = 6
+MAX_STRUCTURED_RESPONSE_ATTEMPTS = 3
 
 PROTECTED = {
     "competition/manifest.md",
@@ -241,8 +242,11 @@ def generate(
         "prompt": prompt,
         "stream": False,
         "format": "json",
+        "think": False,
         "options": {
-            "temperature": 0.12,
+            "temperature": 0.10,
+            "num_ctx": 32768,
+            "num_predict": 8192,
         },
     }
 
@@ -280,6 +284,67 @@ def generate(
         )
 
     return text.strip()
+
+
+def generate_parsed(
+    model: str,
+    prompt: str,
+    parser: Any,
+    label: str,
+) -> Any:
+    """Generate and validate structured output with bounded retries."""
+
+    last_error: Exception | None = None
+    correction = ""
+
+    for attempt in range(
+        1,
+        MAX_STRUCTURED_RESPONSE_ATTEMPTS + 1,
+    ):
+        attempt_prompt = prompt
+
+        if correction:
+            attempt_prompt += (
+                "\n\nSTRUCTURED OUTPUT CORRECTION:\n"
+                + correction
+                + "\n"
+                + "Return a complete JSON object only. "
+                + "Do not use Markdown fences. "
+                + "Do not add commentary before or after JSON."
+            )
+
+        raw = generate(
+            model,
+            attempt_prompt,
+        )
+
+        try:
+            return parser(raw)
+
+        except Exception as exc:
+            last_error = exc
+
+            log(
+                f"{label} structured response rejected "
+                f"attempt {attempt}/"
+                f"{MAX_STRUCTURED_RESPONSE_ATTEMPTS}: "
+                f"{type(exc).__name__}: {exc}"
+            )
+
+            correction = (
+                f"Your previous response was rejected: "
+                f"{type(exc).__name__}: {exc}. "
+                f"Correct that exact problem. "
+                f"Do not propose files under competition/. "
+                f"Writable prefixes are only src/, tests/, docs/, "
+                f"examples/, tools/, and artifacts/qa/."
+            )
+
+    raise RuntimeError(
+        f"{label} failed structured validation after "
+        f"{MAX_STRUCTURED_RESPONSE_ATTEMPTS} attempts: "
+        f"{last_error}"
+    )
 
 
 def next_task(
@@ -326,7 +391,7 @@ def validate_path(
 
 
 def repository_context(
-    limit: int = 120_000,
+    limit: int = 48_000,
 ) -> str:
     sections: list[str] = []
     used = 0
@@ -354,6 +419,13 @@ def repository_context(
         if relative.startswith(
             "artifacts/runtime/"
         ):
+            continue
+
+        if relative in {
+            "competition/backlog.json",
+            "competition/roles.json",
+            "tools/spectral_core_controller.py",
+        }:
             continue
 
         if path.stat().st_size > 40_000:
@@ -442,9 +514,17 @@ Rules:
 - Return complete file contents, not diffs.
 - Maximum {MAX_FILES} files.
 - Do not alter protected competition or controller files.
+- NEVER create or modify anything under competition/.
+- The ONLY writable prefixes are:
+  src/
+  tests/
+  docs/
+  examples/
+  tools/
+  artifacts/qa/
 - Do not create symbolic links.
 - Do not execute commands.
-- Do not modify files outside allowed project directories.
+- Do not modify files outside those exact writable prefixes.
 - Do not weaken valid existing tests.
 - Add tests whenever behavior changes.
 - Keep documentation consistent with behavior.
@@ -929,17 +1009,15 @@ def main() -> int:
         )
 
         try:
-            raw = generate(
+            proposal = generate_parsed(
                 model,
                 specialist_prompt(
                     task,
                     role,
                     state,
                 ),
-            )
-
-            proposal = parse_change(
-                raw
+                parse_change,
+                f"{task['id']} specialist",
             )
 
             if not proposal["files"]:
@@ -1021,17 +1099,15 @@ def main() -> int:
 
                 continue
 
-            review_raw = generate(
+            review = generate_parsed(
                 model,
                 reviewer_prompt(
                     task,
                     reviewer,
                     quality_output,
                 ),
-            )
-
-            review = parse_review(
-                review_raw
+                parse_review,
+                f"{task['id']} reviewer",
             )
 
             if not review["approved"]:
@@ -1135,6 +1211,16 @@ def main() -> int:
         except Exception as exc:
             state = load_state()
 
+            state["repair_failures"] = (
+                int(
+                    state.get(
+                        "repair_failures",
+                        0,
+                    )
+                )
+                + 1
+            )
+
             state[
                 "last_feedback"
             ] = (
@@ -1142,14 +1228,44 @@ def main() -> int:
                 f"{type(exc).__name__}: {exc}"
             )
 
-            save_state(
-                state
-            )
-
             log(
                 state[
                     "last_feedback"
                 ]
+            )
+
+            log(
+                f"{task['id']} controller failure "
+                f"{state['repair_failures']}/"
+                f"{MAX_REPAIR_FAILURES}"
+            )
+
+            if (
+                state["repair_failures"]
+                >= MAX_REPAIR_FAILURES
+            ):
+                reset_to_head()
+
+                state[
+                    "repair_failures"
+                ] = 0
+
+                state[
+                    "last_feedback"
+                ] = (
+                    "Repeated controller or model-output failures "
+                    "caused rollback to the last green commit. "
+                    "Use a smaller, simpler implementation and "
+                    "strictly obey the permitted output paths."
+                )
+
+                log(
+                    f"{task['id']} failure threshold reached; "
+                    "reset to last green commit."
+                )
+
+            save_state(
+                state
             )
 
         time.sleep(
