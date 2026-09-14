@@ -65,6 +65,71 @@ ALLOWED_PREFIXES = (
 )
 
 
+TASK_FILE_RULES = {
+    "COMP-001": {
+        "src/vectis/source_position.py",
+        "src/vectis/source_span.py",
+        "src/vectis/token.py",
+        "tests/test_source_position.py",
+        "tests/test_source_span.py",
+        "tests/test_token.py",
+    },
+    "COMP-002": {
+        "src/vectis/lexer.py",
+        "tests/test_lexer.py",
+    },
+}
+
+
+def task_file_boundary(
+    task_id: str,
+) -> str:
+    """Describe an exact per-task write boundary when one exists."""
+    allowed = TASK_FILE_RULES.get(task_id)
+
+    if not allowed:
+        return (
+            "No additional task-specific file restriction. "
+            "Normal repository write boundaries apply."
+        )
+
+    return "\n".join(
+        "- " + item
+        for item in sorted(allowed)
+    )
+
+
+def validate_task_file_boundary(
+    task_id: str,
+    proposal: dict[str, Any],
+) -> None:
+    """Reject proposals that write outside an exact task boundary."""
+    allowed = TASK_FILE_RULES.get(task_id)
+
+    if not allowed:
+        return
+
+    proposed = {
+        str(file["path"])
+        for file in proposal["files"]
+    }
+
+    outside = sorted(
+        proposed - allowed
+    )
+
+    if outside:
+        raise ValueError(
+            "Task "
+            + task_id
+            + " proposal attempted files outside its "
+            + "deterministic boundary: "
+            + ", ".join(outside)
+            + ". Allowed files: "
+            + ", ".join(sorted(allowed))
+        )
+
+
 def now() -> str:
     return datetime.now(
         timezone.utc
@@ -537,6 +602,13 @@ PREVIOUS QUALITY OUTPUT:
 
 COMPLETED BASELINE TASKS:
 {completed_task_baseline(task["id"])}
+
+TASK-SPECIFIC FILE BOUNDARY:
+{task_file_boundary(task["id"])}
+
+If an exact task-specific boundary is listed above, you MUST
+return only files from that list. Do not implement future tasks,
+even when you can anticipate their requirements.
 
 BASELINE DISCIPLINE:
 Completed tasks are established dependencies of the current
@@ -1100,6 +1172,11 @@ def main() -> int:
                 raise RuntimeError(
                     "Specialist returned no files."
                 )
+
+            validate_task_file_boundary(
+                task["id"],
+                proposal,
+            )
 
             apply_change(
                 proposal
