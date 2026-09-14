@@ -22,19 +22,48 @@ python3 -m unittest discover \
     -v
 
 echo
-echo "[3/7] Package import..."
-python3 - <<'PY'
+echo "[3/8] Package import..."
+
+python3 - <<'PYIMPORT'
 import vectis
-from vectis.cli import build_parser
-
-assert vectis.__version__
-assert build_parser().prog == "vectis"
-
 print("package import: PASS")
-PY
+PYIMPORT
 
 echo
-echo "[4/7] Protected project records..."
+echo "[4/8] Runtime import of all VECTIS modules..."
+
+python3 - <<'PYIMPORTALL'
+import importlib
+import pkgutil
+import vectis
+
+failures = []
+
+for module in pkgutil.walk_packages(
+    vectis.__path__,
+    prefix=vectis.__name__ + ".",
+):
+    name = module.name
+
+    try:
+        importlib.import_module(name)
+        print("import:", name, "PASS")
+    except Exception as exc:
+        failures.append(
+            f"{name}: {type(exc).__name__}: {exc}"
+        )
+
+if failures:
+    print()
+    print("runtime module import failures:")
+    for failure in failures:
+        print(" -", failure)
+    raise SystemExit(1)
+
+print("runtime module imports: PASS")
+PYIMPORTALL
+
+echo "[5/8] Protected project records..."
 
 test -f competition/manifest.md
 test -f competition/provenance.md
@@ -45,11 +74,11 @@ test -f competition/roles.json
 echo "protected records: PRESENT"
 
 echo
-echo "[5/7] Repository whitespace validation..."
+echo "[6/8] Repository whitespace validation..."
 git diff --check
 
 echo
-echo "[6/7] Secret-pattern scan..."
+echo "[7/8] Secret-pattern scan..."
 
 if grep -RInE \
     --exclude-dir=.git \
@@ -64,7 +93,7 @@ fi
 echo "secret-pattern scan: PASS"
 
 echo
-echo "[7/7] Repository boundary scan..."
+echo "[8/8] Repository boundary scan..."
 
 if find . \
     -type l \

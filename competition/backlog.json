@@ -61,15 +61,13 @@
       "role": "compiler_engineer",
       "reviewer": "language_designer",
       "title": "Implement token and source span model",
-      "status": "done",
+      "status": "pending",
       "acceptance": [
         "Typed token model",
         "Source position model",
         "Source span model",
         "Unit tests"
-      ],
-      "completed_at": "2026-09-14T13:14:00.479751+00:00",
-      "implementation_commit": "be3ac55"
+      ]
     },
     {
       "id": "COMP-002",
