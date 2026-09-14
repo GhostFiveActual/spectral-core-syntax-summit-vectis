@@ -679,8 +679,14 @@ ACCEPTANCE:
 QUALITY GATE:
 {quality_output[-20000:]}
 
-GIT DIFF:
+CURRENT PROJECT STATE:
+{repository_context(limit=48_000)}
+
+CURRENT TRACKED DIFF:
 {diff_text()}
+
+The CURRENT PROJECT STATE is authoritative for newly created
+files that may not appear in the tracked Git diff.
 
 Return JSON only:
 
@@ -1076,12 +1082,32 @@ def main() -> int:
                         "repair_failures"
                     ] = 0
 
+                    diagnostic = (
+                        state.get(
+                            "last_quality_output",
+                            "",
+                        )
+                        or state.get(
+                            "last_feedback",
+                            "",
+                        )
+                    )
+
+                    if len(diagnostic) > 12_000:
+                        diagnostic = diagnostic[-12_000:]
+
                     state[
                         "last_feedback"
                     ] = (
-                        "Previous implementation strategy failed "
-                        "repeatedly and was discarded. Use a "
-                        "different design approach."
+                        "The previous candidate was rolled back "
+                        "to the last green commit after repeated "
+                        "failures. Preserve behavior that passed. "
+                        "Repair the smallest root cause supported "
+                        "by the deterministic evidence below. "
+                        "Do not redesign unrelated parts of the "
+                        "task.\n\n"
+                        "LAST FAILURE EVIDENCE:\n"
+                        + diagnostic
                     )
 
                     save_state(
