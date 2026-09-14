@@ -1,17 +1,22 @@
-from dataclasses import dataclass
-from typing import NamedTuple
-from typing import str, int
+"""Source positions used by the VECTIS compiler."""
 
-@dataclass
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
 class SourcePosition:
+    """A 1-based position in a VECTIS source file."""
+
     line: int
     column: int
     file: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.line < 1:
-            raise ValueError("Invalid source position: line must be >= 1")
+            raise ValueError("line must be >= 1")
+
         if self.column < 1:
-            raise ValueError("Invalid source position: column must be >= 1")
-        if not self.file:
-            raise ValueError("Invalid source position: file must not be empty")
+            raise ValueError("column must be >= 1")
+
+        if not isinstance(self.file, str) or not self.file:
+            raise ValueError("file must be a non-empty string")
