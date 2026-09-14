@@ -78,11 +78,14 @@
       "title": "Implement lexer",
       "status": "pending",
       "acceptance": [
-        "Tokenizes normative syntax",
-        "Preserves source spans",
-        "Rejects malformed literals",
-        "Reports useful lexical failures",
-        "Comprehensive tests"
+        "Tokenizes all normative keywords, identifiers, literals, punctuation, and operators",
+        "Uses longest-match behavior for multi-character operators",
+        "Recognizes // comments and ignores lexical whitespace",
+        "Preserves exact 1-based source spans across lines and columns",
+        "Rejects unterminated strings, unsupported bare operator prefixes, and unrecognized characters with useful diagnostics",
+        "Does not treat underscore-separated digits as one numeric literal",
+        "Uses the completed COMP-001 Token, SourcePosition, and SourceSpan APIs without recreating them",
+        "Comprehensive lexer-focused tests derived from docs/spec/lexical-spec.md"
       ]
     },
     {

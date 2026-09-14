@@ -1,21 +1,30 @@
-# Lexical Specification
+# VECTIS Lexical Specification
 
-## Token Classes
+This document defines the normative lexical rules for VECTIS source text.
+The lexer must follow these rules exactly. Examples marked invalid are
+intentionally invalid and must not be interpreted as alternate syntax.
 
-VECTIS tokens are categorized as follows:
+## 1. Token Classes
 
-- **Keyword**
-- **Identifier**
-- **String Literal**
-- **Numeric Literal**
-- **Comment**
-- **Whitespace**
-- **Punctuation**
-- **Operator**
+VECTIS source may produce the following token classes:
 
-## Reserved Keywords
+- Keyword
+- Identifier
+- String Literal
+- Numeric Literal
+- Comment
+- Punctuation
+- Operator
 
-The following keywords are reserved and cannot be used as identifiers:
+Whitespace separates tokens but is not emitted as a semantic token by the
+reference lexer. Comments may be recognized by the lexer but may be omitted
+from the parser token stream.
+
+Every emitted token must retain an exact source span.
+
+## 2. Reserved Keywords
+
+The following words are reserved:
 
 - `mission`
 - `source`
@@ -30,122 +39,249 @@ The following keywords are reserved and cannot be used as identifiers:
 - `report`
 - `review`
 
-## Identifiers
+Reserved keywords cannot be used as identifiers.
 
-Identifiers are used to name variables, functions, and other entities. They must:
-
-- Start with a letter (a-z, A-Z) or underscore (_)
-- Contain only letters, digits (0-9), and underscores
-- Be case-sensitive
+Keyword matching is case-sensitive.
 
 Examples:
 
-- `accessible_tools`
-- `user_input`
-- `data_analysis`
+~~vectis
+mission
+source
+when
+publish
+~~
 
-Invalid examples:
+These are identifiers, not keywords:
 
-- `123tools` (starts with a digit)
-- `user-input` (contains hyphen)
-- `user input` (contains space)
+~~vectis
+Mission
+source_data
+publish_result
+~~
 
-## String Literals
+## 3. Identifiers
 
-String literals are enclosed in double quotes (`"`). They may contain any character except the closing quote, and may span multiple lines.
+An identifier:
+
+1. begins with an ASCII letter (`A-Z` or `a-z`) or underscore (`_`);
+2. continues with zero or more ASCII letters, digits (`0-9`), or underscores;
+3. is case-sensitive;
+4. must not exactly match a reserved keyword.
+
+Valid identifiers:
+
+~~text
+accessible_tools
+user_input
+_data2
+Report
+~~
+
+Invalid identifiers:
+
+~~text
+123tools
+user-input
+user input
+~~
+
+The first invalid form begins with a digit. The second contains a hyphen,
+which is tokenized separately. The third contains whitespace and therefore
+represents two identifiers rather than one identifier.
+
+## 4. String Literals
+
+String literals begin and end with a double quote (`"`).
+
+A string may contain ordinary characters and newline characters. A raw
+unescaped double quote terminates the string.
+
+Escape sequences are not defined in the current lexical version. A future
+language revision may introduce them explicitly.
+
+Valid:
+
+~~vectis
+"accessible developer tools"
+"first line
+second line"
+""
+~~
+
+Invalid:
+
+~~text
+"unterminated string
+~~
+
+An unterminated string is a lexical error and must produce a diagnostic with
+its source location.
+
+## 5. Numeric Literals
+
+Numeric literals support:
+
+- unsigned integers;
+- signed integers;
+- unsigned decimal numbers;
+- signed decimal numbers.
+
+A leading `+` or `-` is part of the numeric literal only when immediately
+followed by a digit.
+
+Digits may not contain underscore separators in the current lexical version.
+
+Valid:
+
+~~text
+42
++42
+-42
+3.14
++0.5
+-0.001
+~~
+
+Invalid numeric forms:
+
+~~text
+123_456
+1_000
+123.45.67
+.
++.
+-.
+~~
+
+`123_456` is not a valid numeric literal. Depending on surrounding syntax,
+a conforming lexer may tokenize it as a numeric token followed by an
+identifier beginning with underscore, or report it as malformed input if
+the implementation validates contiguous numeric-looking sequences. It must
+not silently treat the underscore as a numeric separator.
+
+## 6. Comments
+
+A single-line comment begins with `//` and extends through the final
+character before the next newline or end-of-file.
 
 Examples:
 
-- "accessible developer tools"
-- "This is a multi-line
-string literal."
+~~vectis
+// This is a comment
+mission "demo" { // trailing comment
+}
+~~
 
-Invalid examples:
+A newline terminates the comment. A second line beginning with `//` is a
+separate comment.
 
-- "unterminated string
-- "escaped "quote"
+VECTIS does not currently define block comments.
 
-## Numeric Literals
+## 7. Whitespace
 
-Numeric literals can be integers or floating-point numbers. They may include an optional leading sign (`+` or `-`), and may use underscores as separators for readability.
+The following characters are lexical whitespace outside strings:
+
+- space
+- horizontal tab
+- carriage return
+- newline
+
+Whitespace separates tokens where necessary and is otherwise ignored.
+
+Whitespace still affects source-position tracking. Line and column
+information must advance through ignored whitespace exactly as it does
+through emitted tokens.
+
+## 8. Punctuation
+
+The current punctuation tokens are:
+
+- `{`
+- `}`
+- `(`
+- `)`
+- `[`
+- `]`
+- `;`
+- `,`
+
+Each punctuation symbol is a distinct token.
+
+## 9. Operators
+
+The current operators are:
+
+- `>=`
+- `<=`
+- `==`
+- `!=`
+- `+`
+- `-`
+- `*`
+- `/`
+- `&&`
+- `||`
+- `!`
+
+For operators with shared prefixes, longest-match behavior is required.
 
 Examples:
 
-- `42`
-- `3.14`
-- `+100_000`
-- `-0.001`
+- `>=` must be emitted as one operator token.
+- `!=` must be emitted as one operator token.
+- `!` remains valid as a single operator.
+- `/` is an operator unless followed immediately by `/`, which begins a
+  comment.
 
-Invalid examples:
+Bare `<`, bare `>`, bare `=`, bare `&`, and bare `|` are not operators in
+the current language version and must produce lexical diagnostics.
 
-- `123_456` (valid in some contexts, but not in VECTIS)
-- `123.45.67` (invalid format)
-- `123_45_67` (invalid format)
+## 10. Source Position and Span Rules
 
-## Comments
+Source locations use the canonical compiler models:
 
-Single-line comments start with `//` and extend to the end of the line.
+- `SourcePosition`
+- `SourceSpan`
+- `Token`
 
-Examples:
+Lines and columns are 1-based.
 
-- `// This is a comment`
-- `// A single-line comment`
+The first character of a source file is:
 
-Invalid examples:
+~~text
+line = 1
+column = 1
+~~
 
-- `// This is an invalid comment` (valid, but not an example of invalid syntax)
-- `// This is a comment with a line break
-// This is a second line`
+Every emitted token must contain a `SourceSpan` whose start and end positions
+refer to the same source file.
 
-## Whitespace
+Implementations must advance source positions through:
 
-Whitespace characters (spaces, tabs, newlines) are generally ignored except within string literals and comments. Multiple whitespace characters are treated as a single space.
+- emitted tokens;
+- ignored whitespace;
+- comments;
+- newline characters;
+- multiline strings.
 
-Examples:
+The lexer must never hard-code token locations.
 
-- `  // This is a comment with leading whitespace`
-- `  // This is a comment with multiple spaces`
+## 11. Lexical Errors
 
-Invalid examples:
+The lexer must reject malformed lexical input with a useful diagnostic.
 
-- `  // This is a comment with leading whitespace` (valid, but not an example of invalid syntax)
-- `  // This is a comment with multiple spaces` (valid, but not an example of invalid syntax)
+At minimum, diagnostics are required for:
 
-## Punctuation
+- unterminated string literals;
+- unsupported bare operator prefixes such as `<`, `>`, `=`, `&`, and `|`;
+- otherwise unrecognized characters.
 
-Punctuation characters are used to delimit tokens and include:
+A lexical diagnostic must identify the offending source location.
 
-- `{` and `}` (block delimiters)
-- `(` and `)` (parentheses)
-- `[` and `]` (brackets)
-- `;` (statement separator)
-- `,` (comma)
+## 12. Representative Valid Program
 
-## Operators
-
-Operators are used to perform operations and include:
-
-- `>=` (greater than or equal to)
-- `<=` (less than or equal to)
-- `==` (equal to)
-- `!=` (not equal to)
-- `+` (addition)
-- `-` (subtraction)
-- `*` (multiplication)
-- `/` (division)
-- `&&` (logical AND)
-- `||` (logical OR)
-- `!` (logical NOT)
-
-## Source Span Behavior
-
-Each token includes source span information that indicates its position in the source file. This information is used for diagnostics and error reporting.
-
-## Valid and Invalid Examples
-
-Valid examples:
-
-```vectis
+~~vectis
 mission "Research accessibility tools" {
     source web {
         query "accessible developer tools"
@@ -163,28 +299,58 @@ mission "Research accessibility tools" {
         request review
     }
 }
-```
+~~
 
-Invalid examples:
+This example is intended primarily to demonstrate lexical forms. Later
+parser and semantic specifications determine whether every identifier and
+construct is grammatically and semantically valid.
 
-```vectis
-mission "Research accessibility tools" {
-    source web {
-        query "accessible developer tools"
-    }
+## 13. Representative Invalid Lexical Inputs
 
-    analyze findings {
-        require citations
-    }
+Unterminated string:
 
-    when confidence >= 0.80 {
-        publish report
-    }
+~~text
+mission "Research accessibility tools
+~~
 
-    otherwise {
-        request review
-    }
-}
-```
+Unsupported bare comparison operator:
 
-Note: The invalid example is identical to the valid example, but the intention is to demonstrate that the invalid example is not syntactically correct. In practice, the invalid example would be a valid example, and the valid example would be an invalid example.
+~~text
+when confidence > 0.80
+~~
+
+Unsupported single ampersand:
+
+~~text
+left & right
+~~
+
+Malformed numeric-looking sequence:
+
+~~text
+confidence 1.2.3
+~~
+
+These examples are intentionally invalid and are distinct from the valid
+example above.
+
+## 14. Reference Lexer Conformance
+
+A conforming lexer implementation must demonstrate tests for:
+
+1. reserved keywords;
+2. identifiers;
+3. strings, including multiline and empty strings;
+4. integers and decimals;
+5. optional numeric signs;
+6. rejection or non-numeric treatment of underscore-separated numbers;
+7. `//` comments;
+8. whitespace handling;
+9. all punctuation;
+10. all operators;
+11. longest-match operators;
+12. unsupported bare operator prefixes;
+13. invalid characters;
+14. unterminated strings;
+15. correct line and column progression;
+16. source spans across multiline input.
