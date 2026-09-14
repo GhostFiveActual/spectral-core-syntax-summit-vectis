@@ -76,7 +76,7 @@
       "role": "compiler_engineer",
       "reviewer": "qa_redteam",
       "title": "Implement lexer",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Tokenizes all normative keywords, identifiers, literals, punctuation, and operators",
         "Uses longest-match behavior for multi-character operators",
@@ -86,7 +86,9 @@
         "Does not treat underscore-separated digits as one numeric literal",
         "Uses the completed COMP-001 Token, SourcePosition, and SourceSpan APIs without recreating them",
         "Comprehensive lexer-focused tests derived from docs/spec/lexical-spec.md"
-      ]
+      ],
+      "completed_at": "2026-09-14T15:20:17.292222+00:00",
+      "implementation_commit": "d49c1f7"
     },
     {
       "id": "COMP-003",
