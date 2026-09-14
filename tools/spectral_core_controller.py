@@ -245,8 +245,8 @@ def generate(
         "think": False,
         "options": {
             "temperature": 0.10,
-            "num_ctx": 32768,
-            "num_predict": 8192,
+            "num_ctx": 16384,
+            "num_predict": 4096,
         },
     }
 
@@ -263,7 +263,7 @@ def generate(
 
     with urllib.request.urlopen(
         request,
-        timeout=1200,
+        timeout=420,
     ) as response:
         result = json.loads(
             response.read().decode(
@@ -391,7 +391,7 @@ def validate_path(
 
 
 def repository_context(
-    limit: int = 48_000,
+    limit: int = 32_000,
 ) -> str:
     sections: list[str] = []
     used = 0
