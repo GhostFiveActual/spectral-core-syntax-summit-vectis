@@ -126,7 +126,7 @@
       "role": "compiler_engineer",
       "reviewer": "ux_accessibility",
       "title": "Implement diagnostic system",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Stable diagnostic codes",
         "Severity levels",
@@ -134,7 +134,9 @@
         "Readable messages",
         "Machine-readable form",
         "Diagnostic tests"
-      ]
+      ],
+      "completed_at": "2026-09-14T18:23:43.868357+00:00",
+      "implementation_commit": "2f3a29a"
     },
     {
       "id": "COMP-006",
