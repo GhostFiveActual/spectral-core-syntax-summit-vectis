@@ -95,13 +95,15 @@
       "role": "compiler_engineer",
       "reviewer": "language_designer",
       "title": "Implement AST",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Typed AST nodes",
         "Source spans retained",
         "AST invariants documented",
         "AST tests"
-      ]
+      ],
+      "completed_at": "2026-09-14T16:26:22.522562+00:00",
+      "implementation_commit": "9934df5"
     },
     {
       "id": "COMP-004",
