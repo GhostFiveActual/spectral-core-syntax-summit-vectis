@@ -88,6 +88,13 @@ TASK_FILE_RULES = {
         "tests/test_parser.py",
         "docs/design/parser.md",
     },
+    "COMP-005": {
+        "src/vectis/diagnostic.py",
+        "src/vectis/lexer.py",
+        "src/vectis/parser.py",
+        "tests/test_diagnostic.py",
+        "docs/design/diagnostics.md",
+    },
 }
 
 
