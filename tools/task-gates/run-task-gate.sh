@@ -18,8 +18,8 @@ ROOT="$(
 GATE="$ROOT/tools/task-gates/${TASK_ID}.sh"
 
 if [ ! -f "$GATE" ]; then
-    echo "task gate: none for $TASK_ID"
-    exit 0
+    echo "ERROR: no deterministic task gate registered for $TASK_ID" >&2
+    exit 2
 fi
 
 if [ ! -x "$GATE" ]; then

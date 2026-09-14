@@ -83,6 +83,11 @@ TASK_FILE_RULES = {
         "tests/test_ast.py",
         "docs/design/ast-invariants.md",
     },
+    "COMP-004": {
+        "src/vectis/parser.py",
+        "tests/test_parser.py",
+        "docs/design/parser.md",
+    },
 }
 
 
@@ -94,8 +99,8 @@ def task_file_boundary(
 
     if not allowed:
         return (
-            "No additional task-specific file restriction. "
-            "Normal repository write boundaries apply."
+            "BLOCKED: no deterministic task-specific "
+            "file boundary is registered."
         )
 
     return "\n".join(
@@ -112,7 +117,12 @@ def validate_task_file_boundary(
     allowed = TASK_FILE_RULES.get(task_id)
 
     if not allowed:
-        return
+        raise ValueError(
+            "Task "
+            + task_id
+            + " has no deterministic file boundary. "
+            + "Refusing broad repository writes."
+        )
 
     proposed = {
         str(file["path"])
@@ -132,6 +142,43 @@ def validate_task_file_boundary(
             + ", ".join(outside)
             + ". Allowed files: "
             + ", ".join(sorted(allowed))
+        )
+
+
+def validate_task_contract(
+    task_id: str,
+) -> None:
+    # Fail closed before model generation when a task contract is absent.
+    allowed = TASK_FILE_RULES.get(task_id)
+
+    if not allowed:
+        raise RuntimeError(
+            "Task "
+            + task_id
+            + " has no deterministic TASK_FILE_RULES contract."
+        )
+
+    gate = (
+        ROOT
+        / "tools"
+        / "task-gates"
+        / f"{task_id}.sh"
+    )
+
+    if not gate.is_file():
+        raise RuntimeError(
+            "Task "
+            + task_id
+            + " has no deterministic acceptance gate: "
+            + str(gate.relative_to(ROOT))
+        )
+
+    if not os.access(gate, os.X_OK):
+        raise RuntimeError(
+            "Task "
+            + task_id
+            + " acceptance gate is not executable: "
+            + str(gate.relative_to(ROOT))
         )
 
 
@@ -1143,6 +1190,21 @@ def main() -> int:
             )
 
             return 0
+
+        try:
+            validate_task_contract(
+                task["id"]
+            )
+        except Exception as exc:
+            log(
+                "TASK CONTRACT BLOCK // "
+                + task["id"]
+                + " // "
+                + type(exc).__name__
+                + ": "
+                + str(exc)
+            )
+            return 2
 
         state = load_state()
 
