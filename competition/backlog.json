@@ -44,7 +44,7 @@
       "role": "architect",
       "reviewer": "language_designer",
       "title": "Define semantic model",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Define declarations and references",
         "Define value categories",
@@ -52,7 +52,9 @@
         "Define capability semantics",
         "Define execution dependencies",
         "Document semantic invariants"
-      ]
+      ],
+      "completed_at": "2026-09-14T12:49:47.668428+00:00",
+      "implementation_commit": "7b752df"
     },
     {
       "id": "COMP-001",
