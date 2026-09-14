@@ -6,7 +6,7 @@
       "role": "language_designer",
       "reviewer": "architect",
       "title": "Define lexical specification",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Document token classes",
         "Define reserved keywords",
@@ -16,7 +16,9 @@
         "Define punctuation and operators",
         "Define source span behavior",
         "Provide valid and invalid lexical examples"
-      ]
+      ],
+      "completed_at": "2026-09-14T12:48:05.037678+00:00",
+      "implementation_commit": "9e51df5"
     },
     {
       "id": "LANG-002",
