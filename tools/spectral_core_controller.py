@@ -78,6 +78,11 @@ TASK_FILE_RULES = {
         "src/vectis/lexer.py",
         "tests/test_lexer.py",
     },
+    "COMP-003": {
+        "src/vectis/ast.py",
+        "tests/test_ast.py",
+        "docs/design/ast-invariants.md",
+    },
 }
 
 
@@ -772,6 +777,24 @@ def quality_gate() -> tuple[bool, str]:
     )
 
 
+def task_gate(
+    task_id: str,
+) -> tuple[bool, str]:
+    """Run deterministic acceptance checks for one task."""
+    result = run(
+        [
+            "bash",
+            "tools/task-gates/run-task-gate.sh",
+            task_id,
+        ]
+    )
+
+    return (
+        result.returncode == 0,
+        result.stdout,
+    )
+
+
 def diff_text() -> str:
     return run(
         [
@@ -1272,12 +1295,97 @@ def main() -> int:
 
                 continue
 
+            task_passed, task_output = task_gate(
+                task["id"]
+            )
+
+            if not task_passed:
+                state["repair_failures"] = (
+                    int(
+                        state.get(
+                            "repair_failures",
+                            0,
+                        )
+                    )
+                    + 1
+                )
+
+                state[
+                    "last_quality_output"
+                ] = task_output[-30000:]
+
+                state[
+                    "last_feedback"
+                ] = (
+                    "Deterministic task acceptance gate failed. "
+                    "Repair only the task-specific contract based "
+                    "on the evidence below.\n\n"
+                    + task_output[-12000:]
+                )
+
+                save_state(
+                    state
+                )
+
+                log(
+                    f"{task['id']} task-gate failure "
+                    f"{state['repair_failures']}/"
+                    f"{MAX_REPAIR_FAILURES}"
+                )
+
+                if (
+                    state["repair_failures"]
+                    >= MAX_REPAIR_FAILURES
+                ):
+                    reset_to_head()
+
+                    diagnostic = (
+                        task_output[-12000:]
+                    )
+
+                    state[
+                        "repair_failures"
+                    ] = 0
+
+                    state[
+                        "last_feedback"
+                    ] = (
+                        "The previous candidate was rolled back "
+                        "to the last green commit after repeated "
+                        "deterministic task-gate failures. "
+                        "Preserve completed-task behavior and "
+                        "repair only the current task contract.\n\n"
+                        "LAST TASK-GATE EVIDENCE:\n"
+                        + diagnostic
+                    )
+
+                    save_state(
+                        state
+                    )
+
+                    log(
+                        "Repeated task-gate failure threshold "
+                        "reached; returned to last green commit."
+                    )
+
+                time.sleep(
+                    LOOP_DELAY
+                )
+
+                continue
+
+            review_evidence = (
+                quality_output
+                + "\n\n"
+                + task_output
+            )
+
             review = generate_parsed(
                 model,
                 reviewer_prompt(
                     task,
                     reviewer,
-                    quality_output,
+                    review_evidence,
                 ),
                 parse_review,
                 f"{task['id']} reviewer",
