@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(
-    cd "$(
-        dirname "${BASH_SOURCE[0]}"
-    )/../.." &&
-    pwd
-)"
+echo "============================================================"
+echo " VECTIS // TASK GATE // COMP-003"
+echo "============================================================"
 
-cd "$ROOT"
-
-export PYTHONPATH="$ROOT/src"
-
-echo "[1/6] Required AST artifacts..."
+echo "[1/7] Required AST artifacts..."
 
 for file in \
     src/vectis/ast.py \
@@ -25,156 +18,106 @@ do
     fi
 done
 
-echo "required artifacts: PASS"
+echo "[2/7] Canonical compiler primitive ownership..."
 
-echo
-echo "[2/6] AST module compilation/import..."
+if grep -Eq \
+    '^[[:space:]]*class[[:space:]]+(SourcePosition|SourceSpan|Token|Lexer)\b' \
+    src/vectis/ast.py
+then
+    echo "ERROR: AST redefines completed compiler primitives."
+    exit 1
+fi
 
-python3 -m py_compile \
-    src/vectis/ast.py \
-    tests/test_ast.py
+grep -q \
+    'from vectis.source_span import SourceSpan' \
+    src/vectis/ast.py
 
-python3 - <<'PY'
-import vectis.ast
+echo "[3/7] Required typed AST surface..."
 
-print(
-    "vectis.ast import:",
-    vectis.ast.__file__,
-)
-PY
-
-echo
-echo "[3/6] AST contract structure..."
-
-python3 - <<'PY'
-import inspect
+PYTHONPATH="${PYTHONPATH:-}:src" python3 - <<'PY'
+from dataclasses import is_dataclass
 
 import vectis.ast as ast
 from vectis.source_span import SourceSpan
 
+required = (
+    "Node",
+    "Expression",
+    "Statement",
+    "Program",
+    "Block",
+    "StringLiteral",
+    "NumberLiteral",
+    "BooleanLiteral",
+    "Reference",
+    "UnaryExpression",
+    "BinaryExpression",
+    "Mission",
+    "SourceDeclaration",
+    "AnalyzeDeclaration",
+    "RequireStatement",
+    "RequestStatement",
+    "PublishStatement",
+    "CitationsStatement",
+    "ConfidenceStatement",
+    "WhenStatement",
+)
 
-classes = {
-    name: cls
-    for name, cls in inspect.getmembers(
-        ast,
-        inspect.isclass,
-    )
-    if cls.__module__ == ast.__name__
-}
+for name in required:
+    value = getattr(ast, name, None)
 
-if not classes:
-    raise SystemExit(
-        "ERROR: vectis.ast defines no AST classes"
-    )
-
-span_nodes = []
-
-for name, cls in classes.items():
-    annotations = {}
-
-    for base in reversed(cls.__mro__):
-        annotations.update(
-            getattr(
-                base,
-                "__annotations__",
-                {},
-            )
+    if value is None:
+        raise SystemExit(
+            f"ERROR: missing AST type {name}"
         )
 
-    if "span" in annotations:
-        span_nodes.append(name)
+    if not is_dataclass(value):
+        raise SystemExit(
+            f"ERROR: {name} is not a dataclass"
+        )
 
-if not span_nodes:
+annotations = ast.Node.__dataclass_fields__
+
+if "span" not in annotations:
     raise SystemExit(
-        "ERROR: no AST node declares a span field"
+        "ERROR: Node does not retain source span"
     )
 
-print(
-    "AST classes:",
-    ", ".join(sorted(classes)),
-)
-
-print(
-    "span-bearing AST classes:",
-    ", ".join(sorted(span_nodes)),
-)
-
-print(
-    "canonical span type:",
-    SourceSpan,
-)
+print("typed AST surface: PASS")
+print("canonical SourceSpan:", SourceSpan)
 PY
 
-echo
-echo "[4/6] AST unit tests..."
+echo "[4/7] AST-focused unit tests..."
 
-python3 -m unittest -v \
+PYTHONPATH="${PYTHONPATH:-}:src" \
+python3 -m unittest \
+    -v \
     tests.test_ast
 
-echo
-echo "[5/6] Invariant documentation contract..."
+echo "[5/7] Invariant documentation contract..."
 
-python3 - <<'PY'
-from pathlib import Path
+for phrase in \
+    "Canonical source locations" \
+    "Immutability" \
+    "Node categories" \
+    "Structural typing" \
+    "Grammar boundary"
+do
+    grep -q "$phrase" \
+        docs/design/ast-invariants.md || {
+        echo "ERROR: AST invariant section missing: $phrase"
+        exit 1
+    }
+done
 
-path = Path(
-    "docs/design/ast-invariants.md"
-)
+echo "[6/7] Completed compiler primitives remain canonical..."
 
-text = path.read_text(
-    encoding="utf-8"
-).lower()
-
-required_concepts = {
-    "source span": (
-        "source span",
-        "sourcespan",
-    ),
-    "invariant": (
-        "invariant",
-        "invariants",
-    ),
-    "typed": (
-        "typed",
-        "type",
-    ),
-    "immutability or mutation policy": (
-        "immutable",
-        "immutability",
-        "mutation",
-        "mutable",
-    ),
-}
-
-missing = []
-
-for label, variants in required_concepts.items():
-    if not any(
-        variant in text
-        for variant in variants
-    ):
-        missing.append(label)
-
-if missing:
-    raise SystemExit(
-        "ERROR: AST invariant documentation "
-        "missing concepts: "
-        + ", ".join(missing)
-    )
-
-print(
-    "AST invariant documentation: PASS"
-)
-PY
-
-echo
-echo "[6/6] Completed compiler dependency protection..."
-
-python3 - <<'PY'
+PYTHONPATH="${PYTHONPATH:-}:src" python3 - <<'PY'
+from vectis.ast import Node
+from vectis.lexer import Lexer
 from vectis.source_position import SourcePosition
 from vectis.source_span import SourceSpan
 from vectis.token import Token
-from vectis.lexer import Lexer
 
 position = SourcePosition(
     line=1,
@@ -187,30 +130,36 @@ span = SourceSpan(
     end=position,
 )
 
-token = Token(
-    type="identifier",
-    value="x",
+node = Node(
     span=span,
 )
 
-lexed = Lexer(
-    "mission",
-    file="gate.vectis",
+assert type(node.span) is SourceSpan
+
+tokens = Lexer(
+    'mission demo {}',
+    file='gate.vectis',
 ).tokenize()
 
-assert token.span is span
-assert lexed
-assert isinstance(
-    lexed[0],
-    Token,
+assert tokens
+assert all(
+    type(token) is Token
+    for token in tokens
 )
 
-print(
-    "COMP-001/COMP-002 dependencies: PASS"
-)
+print("completed compiler primitives: PASS")
 PY
 
-echo
+echo "[7/7] AST module does not import future parser/runtime layers..."
+
+if grep -Eq \
+    'vectis\.(parser|semantic|runtime|execution|graph)' \
+    src/vectis/ast.py
+then
+    echo "ERROR: AST depends on a future compiler/runtime layer."
+    exit 1
+fi
+
 echo "============================================================"
-echo " COMP-003 // TASK GATE PASSED"
+echo " COMP-003 TASK GATE PASSED"
 echo "============================================================"
