@@ -464,7 +464,9 @@ def completed_task_baseline(
     current_task_id: str,
 ) -> str:
     """Describe completed work that later tasks must preserve."""
-    data = load_json(BACKLOG_PATH)
+    data = json.loads(
+        BACKLOG_PATH.read_text(encoding="utf-8")
+    )
     tasks = (
         data
         if isinstance(data, list)
