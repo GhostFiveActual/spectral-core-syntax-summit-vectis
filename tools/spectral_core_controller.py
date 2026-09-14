@@ -42,7 +42,7 @@ LOOP_DELAY = int(
 MAX_FILES = 12
 MAX_FILE_SIZE = 150_000
 MAX_REPAIR_FAILURES = 6
-MAX_STRUCTURED_RESPONSE_ATTEMPTS = 3
+MAX_STRUCTURED_RESPONSE_ATTEMPTS = 5
 
 PROTECTED = {
     "competition/manifest.md",
@@ -65,37 +65,7 @@ ALLOWED_PREFIXES = (
 )
 
 
-TASK_FILE_RULES = {
-    "COMP-001": {
-        "src/vectis/source_position.py",
-        "src/vectis/source_span.py",
-        "src/vectis/token.py",
-        "tests/test_source_position.py",
-        "tests/test_source_span.py",
-        "tests/test_token.py",
-    },
-    "COMP-002": {
-        "src/vectis/lexer.py",
-        "tests/test_lexer.py",
-    },
-    "COMP-003": {
-        "src/vectis/ast.py",
-        "tests/test_ast.py",
-        "docs/design/ast-invariants.md",
-    },
-    "COMP-004": {
-        "src/vectis/parser.py",
-        "tests/test_parser.py",
-        "docs/design/parser.md",
-    },
-    "COMP-005": {
-        "src/vectis/diagnostic.py",
-        "src/vectis/lexer.py",
-        "src/vectis/parser.py",
-        "tests/test_diagnostic.py",
-        "docs/design/diagnostics.md",
-    },
-}
+from vectis_task_contracts import TASK_FILE_RULES
 
 
 def task_file_boundary(
@@ -110,9 +80,18 @@ def task_file_boundary(
             "file boundary is registered."
         )
 
-    return "\n".join(
+    boundary = "\n".join(
         "- " + item
         for item in sorted(allowed)
+    )
+
+    return (
+        boundary
+        + "\n\nITERATION OUTPUT POLICY:\n"
+        + "- Change no more than 2 files in one proposal.\n"
+        + "- Keep total proposed file content at or below 12000 characters.\n"
+        + "- Work incrementally and omit unchanged files.\n"
+        + "- Never change completed-task artifacts unless explicitly allowed."
     )
 
 
@@ -149,6 +128,30 @@ def validate_task_file_boundary(
             + ", ".join(outside)
             + ". Allowed files: "
             + ", ".join(sorted(allowed))
+        )
+
+    if len(proposed) > 2:
+        raise ValueError(
+            "Task "
+            + task_id
+            + " proposal exceeded unattended file-count budget: "
+            + str(len(proposed))
+            + " files; maximum is 2."
+        )
+
+    total_content = sum(
+        len(str(file.get("content", "")))
+        for file in proposal["files"]
+    )
+
+    if total_content > 12000:
+        raise ValueError(
+            "Task "
+            + task_id
+            + " proposal exceeded unattended structured-output budget: "
+            + str(total_content)
+            + " characters; maximum is 12000. "
+            + "Split work across iterations."
         )
 
 
