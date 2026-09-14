@@ -25,7 +25,7 @@
       "role": "language_designer",
       "reviewer": "architect",
       "title": "Define normative grammar",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Create a normative grammar",
         "Define top-level constructs",
@@ -35,7 +35,9 @@
         "Define conditionals",
         "Define precedence if applicable",
         "Provide valid and invalid grammar examples"
-      ]
+      ],
+      "completed_at": "2026-09-14T12:48:55.954300+00:00",
+      "implementation_commit": "437d531"
     },
     {
       "id": "LANG-003",
