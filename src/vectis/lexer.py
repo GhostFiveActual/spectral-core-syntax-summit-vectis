@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from vectis.diagnostic import (
+    DiagnosticCode,
+    DiagnosticError,
+    error_diagnostic,
+    point_span,
+)
 from vectis.source_position import SourcePosition
 from vectis.source_span import SourceSpan
 from vectis.token import Token
@@ -69,25 +75,8 @@ UNSUPPORTED_OPERATOR_PREFIXES = frozenset(
 )
 
 
-class LexerError(ValueError):
-    """A lexical error with an exact source location."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        file: str,
-        line: int,
-        column: int,
-    ) -> None:
-        self.message = message
-        self.file = file
-        self.line = line
-        self.column = column
-
-        super().__init__(
-            f"{file}:{line}:{column}: {message}"
-        )
+class LexerError(DiagnosticError):
+    pass
 
 
 class Lexer:
@@ -156,11 +145,13 @@ class Lexer:
 
             if char in UNSUPPORTED_OPERATOR_PREFIXES:
                 self._error(
-                    f"unsupported bare operator {char!r}"
+                    f"unsupported bare operator {char!r}",
+                    code=DiagnosticCode.LEX_UNSUPPORTED_BARE_OPERATOR,
                 )
 
             self._error(
-                f"unrecognized character {char!r}"
+                f"unrecognized character {char!r}",
+                code=DiagnosticCode.LEX_UNRECOGNIZED_CHARACTER,
             )
 
         return list(self.tokens)
@@ -243,6 +234,7 @@ class Lexer:
         self,
         message: str,
         *,
+        code: DiagnosticCode,
         position: SourcePosition | None = None,
     ) -> None:
         location = (
@@ -252,10 +244,15 @@ class Lexer:
         )
 
         raise LexerError(
-            message,
-            file=location.file,
-            line=location.line,
-            column=location.column,
+            error_diagnostic(
+                code=code,
+                message=message,
+                span=point_span(
+                    file=location.file,
+                    line=location.line,
+                    column=location.column,
+                ),
+            )
         )
 
     @staticmethod
@@ -331,6 +328,7 @@ class Lexer:
 
         self._error(
             "unterminated string literal",
+            code=DiagnosticCode.LEX_UNTERMINATED_STRING,
             position=start,
         )
 

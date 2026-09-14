@@ -22,19 +22,20 @@ from vectis.ast import (
     UnaryExpression,
     WhenStatement,
 )
+from vectis.diagnostic import (
+    DiagnosticCode,
+    DiagnosticError,
+    error_diagnostic,
+    point_span,
+)
 from vectis.lexer import Lexer
 from vectis.source_position import SourcePosition
 from vectis.source_span import SourceSpan
 from vectis.token import Token
 
 
-class ParserError(ValueError):
-    def __init__(self, message: str, *, file: str, line: int, column: int) -> None:
-        self.message = message
-        self.file = file
-        self.line = line
-        self.column = column
-        super().__init__(f"{file}:{line}:{column}: {message}")
+class ParserError(DiagnosticError):
+    pass
 
 
 class Parser:
@@ -78,18 +79,23 @@ class Parser:
         token = self._current()
 
         if token is None:
-            self._error("expected statement")
+            self._error(
+                "expected statement",
+                code=DiagnosticCode.SYN_EXPECTED_STATEMENT,
+            )
 
         if token.type != "keyword":
             self._error(
                 f"expected statement keyword, found {token.value!r}",
                 token=token,
+                code=DiagnosticCode.SYN_EXPECTED_STATEMENT,
             )
 
         if token.value == "otherwise":
             self._error(
                 "'otherwise' may only follow a 'when' block",
                 token=token,
+                code=DiagnosticCode.SYN_STANDALONE_OTHERWISE,
             )
 
         dispatch = {
@@ -110,6 +116,7 @@ class Parser:
             self._error(
                 f"keyword {token.value!r} cannot begin a statement",
                 token=token,
+                code=DiagnosticCode.SYN_INVALID_STATEMENT_KEYWORD,
             )
 
         return parser()
@@ -192,7 +199,10 @@ class Parser:
 
             while self._match("punctuation", ",") is not None:
                 if self._check("punctuation", "]"):
-                    self._error("expected expression after ','")
+                    self._error(
+                        "expected expression after ','",
+                        code=DiagnosticCode.SYN_MALFORMED_CITATIONS,
+                    )
                 values.append(self._parse_expression())
 
         self._expect("punctuation", "]")
@@ -226,7 +236,11 @@ class Parser:
 
         while not self._check("punctuation", "}"):
             if self._at_end():
-                self._error("expected '}' to close block", token=opening)
+                self._error(
+                    "expected '}' to close block",
+                    token=opening,
+                    code=DiagnosticCode.SYN_UNCLOSED_BLOCK,
+                )
             statements.append(self._parse_statement())
 
         closing = self._expect("punctuation", "}")
@@ -283,7 +297,10 @@ class Parser:
         token = self._current()
 
         if token is None:
-            self._error("expected expression")
+            self._error(
+                "expected expression",
+                code=DiagnosticCode.SYN_EXPECTED_EXPRESSION,
+            )
 
         if token.type == "string":
             self._advance()
@@ -318,6 +335,7 @@ class Parser:
         self._error(
             f"expected expression, found {token.value!r}",
             token=token,
+            code=DiagnosticCode.SYN_EXPECTED_EXPRESSION,
         )
 
     def _at_end(self) -> bool:
@@ -330,7 +348,10 @@ class Parser:
         token = self._current()
 
         if token is None:
-            self._error("unexpected end of input")
+            self._error(
+                "unexpected end of input",
+                code=DiagnosticCode.SYN_EXPECTED_TOKEN,
+            )
 
         self.index += 1
         return token
@@ -365,33 +386,48 @@ class Parser:
         )
 
         if token is None:
-            self._error(f"expected {expected}, found end of input")
+            self._error(
+                f"expected {expected}, found end of input",
+                code=DiagnosticCode.SYN_EXPECTED_TOKEN,
+            )
 
         self._error(
             f"expected {expected}, found {token.value!r}",
             token=token,
+            code=DiagnosticCode.SYN_EXPECTED_TOKEN,
         )
 
-    def _error(self, message: str, *, token: Token | None = None) -> None:
+    def _error(
+        self,
+        message: str,
+        *,
+        code: DiagnosticCode,
+        token: Token | None = None,
+    ) -> None:
         location = token if token is not None else self._current()
 
         if location is not None:
-            position = location.span.start
+            span = location.span
         elif self.tokens:
             end = self.tokens[-1].span.end
-            position = SourcePosition(
+            span = point_span(
+                file=end.file,
                 line=end.line,
                 column=end.column + 1,
-                file=end.file,
             )
         else:
-            position = SourcePosition(line=1, column=1, file=self.file)
+            span = point_span(
+                file=self.file,
+                line=1,
+                column=1,
+            )
 
         raise ParserError(
-            message,
-            file=position.file,
-            line=position.line,
-            column=position.column,
+            error_diagnostic(
+                code=code,
+                message=message,
+                span=span,
+            )
         )
 
     @staticmethod
