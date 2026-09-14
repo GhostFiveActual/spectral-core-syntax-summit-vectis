@@ -2,11 +2,11 @@ mission "Research accessibility tools" {
     source web "accessible developer tools";
     analyze findings;
 
-    require citations;
+    require web;
 
-    when confidence >= 0.80 {
-        publish report;
+    when score >= 0.80 {
+        publish findings;
     } otherwise {
-        request review;
+        request human_reviewer;
     }
 }

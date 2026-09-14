@@ -1,7 +1,7 @@
 mission "Boolean literals" {
     when true {
-        publish report;
+        publish result;
     } otherwise {
-        request review;
+        request human_reviewer;
     }
 }
