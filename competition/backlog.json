@@ -1,0 +1,404 @@
+{
+  "project": "VECTIS",
+  "tasks": [
+    {
+      "id": "LANG-001",
+      "role": "language_designer",
+      "reviewer": "architect",
+      "title": "Define lexical specification",
+      "status": "pending",
+      "acceptance": [
+        "Document token classes",
+        "Define reserved keywords",
+        "Define identifiers",
+        "Define strings and numeric literals",
+        "Define comments and whitespace",
+        "Define punctuation and operators",
+        "Define source span behavior",
+        "Provide valid and invalid lexical examples"
+      ]
+    },
+    {
+      "id": "LANG-002",
+      "role": "language_designer",
+      "reviewer": "architect",
+      "title": "Define normative grammar",
+      "status": "pending",
+      "acceptance": [
+        "Create a normative grammar",
+        "Define top-level constructs",
+        "Define blocks",
+        "Define expressions",
+        "Define lists and literals",
+        "Define conditionals",
+        "Define precedence if applicable",
+        "Provide valid and invalid grammar examples"
+      ]
+    },
+    {
+      "id": "LANG-003",
+      "role": "architect",
+      "reviewer": "language_designer",
+      "title": "Define semantic model",
+      "status": "pending",
+      "acceptance": [
+        "Define declarations and references",
+        "Define value categories",
+        "Define basic type model",
+        "Define capability semantics",
+        "Define execution dependencies",
+        "Document semantic invariants"
+      ]
+    },
+    {
+      "id": "COMP-001",
+      "role": "compiler_engineer",
+      "reviewer": "language_designer",
+      "title": "Implement token and source span model",
+      "status": "pending",
+      "acceptance": [
+        "Typed token model",
+        "Source position model",
+        "Source span model",
+        "Unit tests"
+      ]
+    },
+    {
+      "id": "COMP-002",
+      "role": "compiler_engineer",
+      "reviewer": "qa_redteam",
+      "title": "Implement lexer",
+      "status": "pending",
+      "acceptance": [
+        "Tokenizes normative syntax",
+        "Preserves source spans",
+        "Rejects malformed literals",
+        "Reports useful lexical failures",
+        "Comprehensive tests"
+      ]
+    },
+    {
+      "id": "COMP-003",
+      "role": "compiler_engineer",
+      "reviewer": "language_designer",
+      "title": "Implement AST",
+      "status": "pending",
+      "acceptance": [
+        "Typed AST nodes",
+        "Source spans retained",
+        "AST invariants documented",
+        "AST tests"
+      ]
+    },
+    {
+      "id": "COMP-004",
+      "role": "compiler_engineer",
+      "reviewer": "qa_redteam",
+      "title": "Implement parser",
+      "status": "pending",
+      "acceptance": [
+        "Parses normative grammar",
+        "Produces typed AST",
+        "Reports syntax diagnostics",
+        "Parses official examples",
+        "Comprehensive parser tests"
+      ]
+    },
+    {
+      "id": "COMP-005",
+      "role": "compiler_engineer",
+      "reviewer": "ux_accessibility",
+      "title": "Implement diagnostic system",
+      "status": "pending",
+      "acceptance": [
+        "Stable diagnostic codes",
+        "Severity levels",
+        "Source spans",
+        "Readable messages",
+        "Machine-readable form",
+        "Diagnostic tests"
+      ]
+    },
+    {
+      "id": "COMP-006",
+      "role": "compiler_engineer",
+      "reviewer": "architect",
+      "title": "Implement semantic analyzer",
+      "status": "pending",
+      "acceptance": [
+        "Validates references",
+        "Validates value categories or types",
+        "Validates capability usage",
+        "Rejects invalid semantics",
+        "Produces deterministic diagnostics",
+        "Comprehensive tests"
+      ]
+    },
+    {
+      "id": "IR-001",
+      "role": "architect",
+      "reviewer": "runtime_engineer",
+      "title": "Design execution graph IR",
+      "status": "pending",
+      "acceptance": [
+        "Typed graph nodes",
+        "Dependency edges",
+        "Conditional edges",
+        "Stable serialization",
+        "Documented invariants"
+      ]
+    },
+    {
+      "id": "IR-002",
+      "role": "compiler_engineer",
+      "reviewer": "runtime_engineer",
+      "title": "Compile AST to execution graph",
+      "status": "pending",
+      "acceptance": [
+        "Deterministic graph generation",
+        "Dependencies preserved",
+        "Conditions represented explicitly",
+        "Compiler tests"
+      ]
+    },
+    {
+      "id": "RUN-001",
+      "role": "runtime_engineer",
+      "reviewer": "qa_redteam",
+      "title": "Implement capability model",
+      "status": "pending",
+      "acceptance": [
+        "Explicit capability declarations",
+        "Unavailable capabilities denied",
+        "No implicit privileged behavior",
+        "Capability tests"
+      ]
+    },
+    {
+      "id": "RUN-002",
+      "role": "runtime_engineer",
+      "reviewer": "qa_redteam",
+      "title": "Implement deterministic runtime",
+      "status": "pending",
+      "acceptance": [
+        "Graph execution",
+        "Deterministic scheduling rules",
+        "Node state tracking",
+        "Failure propagation",
+        "Dry-run support",
+        "Runtime tests"
+      ]
+    },
+    {
+      "id": "RUN-003",
+      "role": "runtime_engineer",
+      "reviewer": "qa_redteam",
+      "title": "Implement filesystem adapter",
+      "status": "pending",
+      "acceptance": [
+        "Explicit allowed roots",
+        "Traversal protection",
+        "Read and write operations",
+        "Adapter tests"
+      ]
+    },
+    {
+      "id": "RUN-004",
+      "role": "runtime_engineer",
+      "reviewer": "qa_redteam",
+      "title": "Implement process adapter",
+      "status": "pending",
+      "acceptance": [
+        "Explicit executable allowlist",
+        "Structured arguments",
+        "No shell interpolation by default",
+        "Timeout handling",
+        "Adapter tests"
+      ]
+    },
+    {
+      "id": "RUN-005",
+      "role": "runtime_engineer",
+      "reviewer": "qa_redteam",
+      "title": "Implement HTTP adapter",
+      "status": "pending",
+      "acceptance": [
+        "Structured request model",
+        "Timeout handling",
+        "HTTP status handling",
+        "JSON handling",
+        "Adapter tests"
+      ]
+    },
+    {
+      "id": "DX-001",
+      "role": "compiler_engineer",
+      "reviewer": "ux_accessibility",
+      "title": "Build CLI toolchain",
+      "status": "pending",
+      "acceptance": [
+        "vectis check",
+        "vectis parse",
+        "vectis plan",
+        "vectis run",
+        "Clear help",
+        "CLI tests"
+      ]
+    },
+    {
+      "id": "DX-002",
+      "role": "documentation_submission",
+      "reviewer": "compiler_engineer",
+      "title": "Create official example programs",
+      "status": "pending",
+      "acceptance": [
+        "Research workflow",
+        "Build and test workflow",
+        "Data workflow",
+        "Failure handling workflow",
+        "All examples exercised by automated tests"
+      ]
+    },
+    {
+      "id": "QA-001",
+      "role": "qa_redteam",
+      "reviewer": "compiler_engineer",
+      "title": "Build language conformance suite",
+      "status": "pending",
+      "acceptance": [
+        "Positive lexical fixtures",
+        "Negative lexical fixtures",
+        "Positive syntax fixtures",
+        "Negative syntax fixtures",
+        "Semantic fixtures",
+        "Regression fixtures"
+      ]
+    },
+    {
+      "id": "QA-002",
+      "role": "qa_redteam",
+      "reviewer": "architect",
+      "title": "Perform architecture and runtime security review",
+      "status": "pending",
+      "acceptance": [
+        "Threat model",
+        "Parser abuse review",
+        "Capability boundary review",
+        "Filesystem review",
+        "Process adapter review",
+        "Failure mode review",
+        "Critical findings resolved"
+      ]
+    },
+    {
+      "id": "UX-001",
+      "role": "ux_accessibility",
+      "reviewer": "language_designer",
+      "title": "Review language usability",
+      "status": "pending",
+      "acceptance": [
+        "Syntax consistency review",
+        "Diagnostic clarity review",
+        "Beginner workflow review",
+        "Accessibility recommendations",
+        "Significant findings resolved"
+      ]
+    },
+    {
+      "id": "UX-002",
+      "role": "ux_accessibility",
+      "reviewer": "qa_redteam",
+      "title": "Build local browser playground",
+      "status": "pending",
+      "acceptance": [
+        "Editable VECTIS source",
+        "Parse feedback",
+        "AST visualization",
+        "Execution graph visualization",
+        "Diagnostic presentation",
+        "Keyboard accessible",
+        "Responsive",
+        "Automated browser tests where practical"
+      ]
+    },
+    {
+      "id": "DOC-001",
+      "role": "documentation_submission",
+      "reviewer": "language_designer",
+      "title": "Write complete language guide",
+      "status": "pending",
+      "acceptance": [
+        "Installation",
+        "Tutorial",
+        "Syntax reference",
+        "Compiler explanation",
+        "Runtime explanation",
+        "Examples",
+        "Troubleshooting"
+      ]
+    },
+    {
+      "id": "DOC-002",
+      "role": "documentation_submission",
+      "reviewer": "architect",
+      "title": "Write technical architecture package",
+      "status": "pending",
+      "acceptance": [
+        "System architecture",
+        "Compiler stages",
+        "IR design",
+        "Runtime design",
+        "Security model",
+        "Design tradeoffs"
+      ]
+    },
+    {
+      "id": "SUB-001",
+      "role": "documentation_submission",
+      "reviewer": "ux_accessibility",
+      "title": "Prepare five-minute demo plan",
+      "status": "pending",
+      "acceptance": [
+        "Opening problem",
+        "Language demonstration",
+        "Compiler pipeline demonstration",
+        "Diagnostics demonstration",
+        "Runtime demonstration",
+        "Real-world impact",
+        "Timing under five minutes"
+      ]
+    },
+    {
+      "id": "SUB-002",
+      "role": "documentation_submission",
+      "reviewer": "architect",
+      "title": "Prepare Devpost submission draft",
+      "status": "pending",
+      "acceptance": [
+        "Project description",
+        "Problem statement",
+        "Innovation explanation",
+        "Technical implementation",
+        "Language design",
+        "Impact",
+        "Setup instructions",
+        "Judging criteria mapping"
+      ]
+    },
+    {
+      "id": "FINAL-001",
+      "role": "qa_redteam",
+      "reviewer": "architect",
+      "title": "Final release candidate review",
+      "status": "pending",
+      "acceptance": [
+        "Complete test suite passes",
+        "Official examples pass",
+        "Documentation matches implementation",
+        "No unresolved critical security findings",
+        "No unresolved major accessibility findings",
+        "Clean release candidate documented"
+      ]
+    }
+  ]
+}

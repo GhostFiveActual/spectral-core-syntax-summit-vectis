@@ -1,0 +1,32 @@
+{
+  "roles": {
+    "architect": {
+      "name": "Architect",
+      "mission": "Protect overall language and system coherence. Define boundaries, interfaces, invariants, and long-term architecture."
+    },
+    "language_designer": {
+      "name": "Language Designer",
+      "mission": "Design lexical rules, grammar, syntax, semantics, consistency, readability, and language ergonomics."
+    },
+    "compiler_engineer": {
+      "name": "Compiler Engineer",
+      "mission": "Implement lexer, parser, AST, diagnostics, semantic analysis, compiler passes, and conformance behavior."
+    },
+    "runtime_engineer": {
+      "name": "Runtime Engineer",
+      "mission": "Implement execution IR, deterministic runtime, capability system, adapters, failure handling, and observability."
+    },
+    "qa_redteam": {
+      "name": "QA / Red-Team",
+      "mission": "Find correctness failures, parser edge cases, unsafe runtime behavior, broken assumptions, regressions, and test gaps."
+    },
+    "ux_accessibility": {
+      "name": "UX / Accessibility",
+      "mission": "Make the language, diagnostics, documentation, CLI, and playground understandable and accessible."
+    },
+    "documentation_submission": {
+      "name": "Documentation / Submission",
+      "mission": "Maintain accurate documentation, examples, architecture explanation, demo narrative, and hackathon submission materials."
+    }
+  }
+}
