@@ -453,64 +453,149 @@ def specialist_transport_prompt(
     state: dict[str, Any],
     target: str | None = None,
 ) -> str:
-    # The controller owns the target path. The model returns only file bytes.
+    # The controller owns the path. For an existing broken artifact, use a
+    # deliberately compact repair prompt instead of the full repository
+    # briefing so the model focuses on the exact failing file and evidence.
     if target is None:
         target = next_task_target(
             task["id"],
             state,
         )
 
-    base = specialist_prompt(
-        task,
-        role,
-        state,
+    target_path = validate_path(
+        target
     )
 
-    marker = "\nReturn JSON only:"
+    acceptance = "\n".join(
+        "- " + str(item)
+        for item in task.get(
+            "acceptance",
+            [],
+        )
+    )
 
-    if marker in base:
-        base = base.split(
-            marker,
-            1,
-        )[0].rstrip()
+    feedback = str(
+        state.get(
+            "last_feedback",
+            "",
+        )
+        or "(none)"
+    )
+
+    quality = str(
+        state.get(
+            "last_quality_output",
+            "",
+        )
+        or "(none)"
+    )
+
+    if len(feedback) > 4_000:
+        feedback = feedback[-4_000:]
+
+    if len(quality) > 8_000:
+        quality = quality[-8_000:]
 
     authority = authoritative_dependency_context(
         task["id"],
         target,
     )
 
+    if len(authority) > 12_000:
+        authority = authority[-12_000:]
+
+    if target_path.exists():
+        current_body = target_path.read_text(
+            encoding="utf-8",
+            errors="replace",
+        )
+
+        if len(current_body) > 12_000:
+            current_body = current_body[-12_000:]
+
+        return (
+            "You are repairing one existing VECTIS task artifact.\n\n"
+            + "ROLE:\n"
+            + str(role.get("name", "specialist"))
+            + "\n\n"
+            + "ACTIVE TASK:\n"
+            + str(task["id"])
+            + ": "
+            + str(task["title"])
+            + "\n\n"
+            + "ACCEPTANCE:\n"
+            + acceptance
+            + "\n\n"
+            + "TARGET FILE:\n"
+            + target
+            + "\n\n"
+            + "DETERMINISTIC FAILURE / REVIEW FEEDBACK:\n"
+            + feedback
+            + "\n\n"
+            + "DETERMINISTIC QUALITY EVIDENCE:\n"
+            + quality
+            + "\n\n"
+            + "AUTHORITATIVE DEPENDENCY CONTEXT:\n"
+            + authority
+            + "\n\n"
+            + "CURRENT TARGET FILE CONTENTS:\n"
+            + "<<<CURRENT_TARGET_BODY>>>\n"
+            + current_body
+            + "\n<<<END_CURRENT_TARGET_BODY>>>\n\n"
+            + "REPAIR DIRECTIVE:\n"
+            + "Repair the smallest root cause demonstrated by the "
+              "deterministic evidence. The checked-in/current source APIs "
+              "and authoritative dependency context outrank assumptions. "
+              "Do not preserve an import, symbol, constructor, or call shape "
+              "that the evidence proves is invalid. Do not rewrite unrelated "
+              "completed-task behavior. Your returned file MUST differ from "
+              "the current target body when a failure is present.\n\n"
+            + "OUTPUT CONTRACT:\n"
+            + "Return ONLY the complete replacement contents of the TARGET "
+              "FILE. Do not return JSON, a path, a commit message, commentary, "
+              "or multiple files. A single outer Markdown code fence is "
+              "tolerated by the controller for source files, but plain file "
+              "contents are preferred."
+        )
+
+    # New artifact: no repair body exists, so retain task acceptance and
+    # authoritative dependencies but still avoid the large generic repo dump.
     return (
-        base
-        + "\n\nAUTHORITATIVE DEPENDENCY CONTEXT:\n"
-        + authority
+        "You are creating one missing VECTIS task artifact.\n\n"
+        + "ROLE:\n"
+        + str(role.get("name", "specialist"))
         + "\n\n"
-        + "DIRECT SINGLE-FILE BODY MODE -- THIS OVERRIDES ANY EARLIER "
-          "RESPONSE-FORMAT INSTRUCTION.\n\n"
-        + "TARGET FILE FOR THIS ITERATION:\n"
+        + "ACTIVE TASK:\n"
+        + str(task["id"])
+        + ": "
+        + str(task["title"])
+        + "\n\n"
+        + "ACCEPTANCE:\n"
+        + acceptance
+        + "\n\n"
+        + "TARGET FILE:\n"
         + target
         + "\n\n"
-        + "The controller already owns and validates that exact path. "
-          "Generate or repair EXACTLY that one file. Do not select, name, "
-          "or describe any path. Do not return any other artifact.\n\n"
-        + "Your entire response becomes the contents of the target file. "
-          "Return ONLY the complete file body. Do NOT return JSON. "
-          "Do NOT include PATH, COMMIT, transport headers, begin/end "
-          "markers, Markdown wrapper fences, or commentary before or "
-          "after the file body.\n\n"
-        + "For source-code targets, the first response character must be "
-          "the first character of valid source and the final response "
-          "character must belong to the file itself. Markdown documents "
-          "may contain legitimate Markdown code fences as part of their "
-          "document body. Keep the complete artifact at or below 12000 "
-          "UTF-8 bytes."
+        + "LATEST TASK EVIDENCE:\n"
+        + quality
+        + "\n\n"
+        + "AUTHORITATIVE DEPENDENCY CONTEXT:\n"
+        + authority
+        + "\n\n"
+        + "Create exactly this required artifact using the established "
+          "VECTIS APIs. Do not implement future tasks or invent project "
+          "symbols that are absent from authoritative dependencies.\n\n"
+        + "OUTPUT CONTRACT:\n"
+        + "Return ONLY the complete contents of the TARGET FILE. Do not "
+          "return JSON, a path, a commit message, commentary, or another "
+          "artifact."
     )
-
 
 def parse_specialist_transport(
     text: str,
     target: str,
 ) -> dict[str, Any]:
-    # Convert one raw model response directly into the controller-owned file.
+    # Convert one model response directly into the controller-owned file.
     if not isinstance(
         text,
         str,
@@ -552,9 +637,6 @@ def parse_specialist_transport(
         suffix in code_suffixes
         and "```" in content
     ):
-        # Accept only one outer Markdown wrapper around the entire source
-        # response. The controller already owns the target path, so the
-        # wrapper itself carries no trusted metadata.
         stripped = content.strip()
         lines = stripped.splitlines()
 
@@ -648,6 +730,26 @@ def parse_specialist_transport(
         raise ValueError(
             "Direct specialist body exceeded 12000 UTF-8 bytes."
         )
+
+    current_path = ROOT / path_value
+
+    if current_path.exists():
+        current = current_path.read_text(
+            encoding="utf-8",
+            errors="replace",
+        )
+
+        current = current.rstrip(
+            "\r\n"
+        ) + "\n"
+
+        if content == current:
+            raise ValueError(
+                "Generated body is byte-equivalent to the current target "
+                "after newline normalization. The deterministic failure is "
+                "still unresolved; return a real repair that changes the "
+                "target file."
+            )
 
     if path_value.startswith(
         "docs/"
