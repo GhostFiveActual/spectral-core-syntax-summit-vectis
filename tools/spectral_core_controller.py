@@ -323,8 +323,15 @@ def specialist_transport_prompt(
             1,
         )[0].rstrip()
 
+    authority = authoritative_dependency_context(
+        task["id"],
+        target,
+    )
+
     return (
         base
+        + "\n\nAUTHORITATIVE DEPENDENCY CONTEXT:\n"
+        + authority
         + "\n\n"
         + "RAW SINGLE-FILE TRANSPORT -- THIS OVERRIDES ANY EARLIER "
           "RESPONSE-FORMAT INSTRUCTION.\n\n"
@@ -1058,6 +1065,570 @@ def completed_task_baseline(
     return "\n".join(completed)
 
 
+
+SPECIALIST_FAILURE_CONTEXT_MAX = 5_000
+SPECIALIST_REPOSITORY_CONTEXT_MAX = 6_000
+SPECIALIST_AUTHORITY_CONTEXT_MAX = 20_000
+
+TASK_AUTHORITY_FILES: dict[str, tuple[str, ...]] = {
+    "COMP-006": (
+        "src/vectis/ast.py",
+        "src/vectis/diagnostic.py",
+        "src/vectis/parser.py",
+        "docs/spec/semantic-model.md",
+        "docs/spec/grammar.md",
+    ),
+    "IR-001": (
+        "src/vectis/ast.py",
+        "src/vectis/semantic.py",
+        "src/vectis/diagnostic.py",
+        "docs/design/semantic-analysis.md",
+    ),
+    "IR-002": (
+        "src/vectis/ast.py",
+        "src/vectis/semantic.py",
+        "src/vectis/ir.py",
+        "src/vectis/diagnostic.py",
+    ),
+    "RUN-001": (
+        "src/vectis/compiler.py",
+        "src/vectis/ir.py",
+        "src/vectis/semantic.py",
+        "src/vectis/diagnostic.py",
+    ),
+    "RUN-002": (
+        "src/vectis/compiler.py",
+        "src/vectis/ir.py",
+        "src/vectis/semantic.py",
+        "src/vectis/capabilities.py",
+    ),
+    "RUN-003": (
+        "src/vectis/runtime.py",
+        "src/vectis/capabilities.py",
+        "src/vectis/compiler.py",
+    ),
+    "RUN-004": (
+        "src/vectis/runtime.py",
+        "src/vectis/capabilities.py",
+        "src/vectis/adapters/filesystem.py",
+    ),
+    "RUN-005": (
+        "src/vectis/runtime.py",
+        "src/vectis/capabilities.py",
+        "src/vectis/adapters/filesystem.py",
+        "src/vectis/adapters/process.py",
+    ),
+    "DX-001": (
+        "src/vectis/runtime.py",
+        "src/vectis/compiler.py",
+        "src/vectis/parser.py",
+        "src/vectis/semantic.py",
+        "pyproject.toml",
+    ),
+    "DX-002": (
+        "src/vectis/cli.py",
+        "src/vectis/runtime.py",
+        "src/vectis/compiler.py",
+        "src/vectis/parser.py",
+        "src/vectis/semantic.py",
+    ),
+    "QA-001": (
+        "src/vectis/cli.py",
+        "src/vectis/runtime.py",
+        "src/vectis/compiler.py",
+        "src/vectis/semantic.py",
+        "src/vectis/ir.py",
+    ),
+    "QA-002": (
+        "src/vectis/runtime.py",
+        "src/vectis/capabilities.py",
+        "src/vectis/adapters/filesystem.py",
+        "src/vectis/adapters/process.py",
+        "src/vectis/adapters/http.py",
+    ),
+    "UX-001": (
+        "src/vectis/diagnostic.py",
+        "src/vectis/cli.py",
+        "docs/design/diagnostics.md",
+    ),
+    "UX-002": (
+        "src/vectis/cli.py",
+        "docs/design/usability.md",
+        "docs/design/error-message-guidelines.md",
+    ),
+    "DOC-001": (
+        "src/vectis/cli.py",
+        "src/vectis/runtime.py",
+        "src/vectis/compiler.py",
+        "README.md",
+    ),
+    "DOC-002": (
+        "src/vectis/compiler.py",
+        "src/vectis/ir.py",
+        "src/vectis/runtime.py",
+        "src/vectis/capabilities.py",
+    ),
+    "SUB-001": (
+        "src/vectis/cli.py",
+        "src/vectis/runtime.py",
+        "src/vectis/compiler.py",
+        "README.md",
+    ),
+    "SUB-002": (
+        "README.md",
+        "docs/demo.md",
+        "examples/demo.vectis",
+    ),
+    "FINAL-001": (
+        "README.md",
+        "pyproject.toml",
+        "src/vectis/__init__.py",
+    ),
+}
+
+
+def _is_failure_line(line: str) -> bool:
+    import re
+
+    lowered = line.lower()
+
+    phrase_markers = (
+        "runtime module import failures",
+        "missing required artifact",
+        "missing required concept",
+        "missing symbol",
+        "requires at least",
+        "error compiling",
+        "traceback (most recent call last)",
+        "no such file or directory",
+        "rejected by",
+    )
+
+    if any(marker in lowered for marker in phrase_markers):
+        return True
+
+    exception_markers = (
+        "ImportError:",
+        "ModuleNotFoundError:",
+        "SyntaxError:",
+        "AssertionError:",
+        "AttributeError:",
+        "NameError:",
+        "TypeError:",
+        "ValueError:",
+        "RuntimeError:",
+    )
+
+    if any(marker in line for marker in exception_markers):
+        return True
+
+    if re.search(
+        r"(^|[\s:])(?:ERROR|FAIL|FAILED)(?:[\s:/(]|$)",
+        line,
+    ):
+        return True
+
+    if line.startswith("E   "):
+        return True
+
+    return False
+
+
+def compact_gate_output(
+    output: str,
+    *,
+    limit: int = SPECIALIST_FAILURE_CONTEXT_MAX,
+) -> str:
+    # Keep deterministic failure evidence, not pages of successful tests.
+    if not output:
+        return ""
+
+    lines = output.splitlines()
+    matches = [
+        index
+        for index, line in enumerate(lines)
+        if _is_failure_line(line)
+    ]
+
+    if not matches:
+        compact = output[-limit:]
+        return compact.strip()
+
+    wanted: set[int] = set()
+
+    for index in matches:
+        for offset in range(-2, 4):
+            candidate = index + offset
+
+            if 0 <= candidate < len(lines):
+                wanted.add(candidate)
+
+    selected = [
+        lines[index]
+        for index in sorted(wanted)
+    ]
+
+    compact = "\n".join(selected).strip()
+
+    if len(compact) > limit:
+        compact = compact[-limit:]
+
+    return compact
+
+
+def compact_failure_evidence(
+    state: dict[str, Any],
+) -> str:
+    feedback = str(
+        state.get(
+            "last_feedback",
+            "",
+        )
+        or ""
+    )
+
+    quality = str(
+        state.get(
+            "last_quality_output",
+            "",
+        )
+        or ""
+    )
+
+    pieces = []
+
+    for value in (feedback, quality):
+        compact = compact_gate_output(
+            value
+        )
+
+        if compact and compact not in pieces:
+            pieces.append(compact)
+
+    if not pieces:
+        return "(none)"
+
+    combined = "\n\n".join(pieces)
+
+    if len(combined) > SPECIALIST_FAILURE_CONTEXT_MAX:
+        combined = combined[-SPECIALIST_FAILURE_CONTEXT_MAX:]
+
+    return combined
+
+
+def compact_repository_context() -> str:
+    raw = repository_context()
+
+    if len(raw) <= SPECIALIST_REPOSITORY_CONTEXT_MAX:
+        return raw
+
+    half = SPECIALIST_REPOSITORY_CONTEXT_MAX // 2
+
+    return (
+        raw[:half]
+        + "\n...[repository context compacted]...\n"
+        + raw[-half:]
+    )
+
+
+def _python_public_surface(
+    source_path: pathlib.Path,
+) -> str:
+    import ast as py_ast
+
+    try:
+        source = source_path.read_text(
+            encoding="utf-8"
+        )
+        tree = py_ast.parse(
+            source,
+            filename=str(source_path),
+        )
+    except (OSError, SyntaxError):
+        return ""
+
+    rendered: list[str] = []
+
+    for node in tree.body:
+        if isinstance(
+            node,
+            py_ast.ImportFrom,
+        ):
+            module = node.module or ""
+
+            if module.startswith("vectis"):
+                names = ", ".join(
+                    alias.name
+                    for alias in node.names
+                )
+                rendered.append(
+                    f"from {module} import {names}"
+                )
+
+        elif isinstance(
+            node,
+            py_ast.ClassDef,
+        ):
+            bases = ", ".join(
+                py_ast.unparse(base)
+                for base in node.bases
+            )
+
+            header = (
+                f"class {node.name}"
+                + (f"({bases})" if bases else "")
+                + ":"
+            )
+            rendered.append(header)
+
+            for child in node.body:
+                if isinstance(
+                    child,
+                    py_ast.AnnAssign,
+                ) and isinstance(
+                    child.target,
+                    py_ast.Name,
+                ):
+                    field = (
+                        "    "
+                        + child.target.id
+                        + ": "
+                        + py_ast.unparse(
+                            child.annotation
+                        )
+                    )
+
+                    if child.value is not None:
+                        field += (
+                            " = "
+                            + py_ast.unparse(
+                                child.value
+                            )
+                        )
+
+                    rendered.append(field)
+
+                elif isinstance(
+                    child,
+                    py_ast.Assign,
+                ):
+                    names = [
+                        target.id
+                        for target in child.targets
+                        if isinstance(
+                            target,
+                            py_ast.Name,
+                        )
+                    ]
+
+                    for name in names:
+                        if not name.startswith("_"):
+                            rendered.append(
+                                "    "
+                                + name
+                                + " = "
+                                + py_ast.unparse(
+                                    child.value
+                                )
+                            )
+
+                elif isinstance(
+                    child,
+                    (
+                        py_ast.FunctionDef,
+                        py_ast.AsyncFunctionDef,
+                    ),
+                ):
+                    if child.name.startswith("_"):
+                        continue
+
+                    signature = (
+                        "    def "
+                        + child.name
+                        + "("
+                        + py_ast.unparse(
+                            child.args
+                        )
+                        + ")"
+                    )
+
+                    if child.returns is not None:
+                        signature += (
+                            " -> "
+                            + py_ast.unparse(
+                                child.returns
+                            )
+                        )
+
+                    rendered.append(
+                        signature + ": ..."
+                    )
+
+        elif isinstance(
+            node,
+            (
+                py_ast.FunctionDef,
+                py_ast.AsyncFunctionDef,
+            ),
+        ):
+            if node.name.startswith("_"):
+                continue
+
+            signature = (
+                "def "
+                + node.name
+                + "("
+                + py_ast.unparse(
+                    node.args
+                )
+                + ")"
+            )
+
+            if node.returns is not None:
+                signature += (
+                    " -> "
+                    + py_ast.unparse(
+                        node.returns
+                    )
+                )
+
+            rendered.append(
+                signature + ": ..."
+            )
+
+    return "\n".join(rendered)
+
+
+def authoritative_dependency_context(
+    task_id: str,
+    target: str,
+) -> str:
+    # Exact project files outrank prose and model assumptions.
+    spec = TASK_SPECS.get(
+        task_id,
+        {},
+    )
+
+    candidates: list[str] = [
+        target,
+    ]
+
+    for relative in spec.get(
+        "required_files",
+        [],
+    ):
+        if relative not in candidates:
+            candidates.append(relative)
+
+    for relative in TASK_AUTHORITY_FILES.get(
+        task_id,
+        (),
+    ):
+        if relative not in candidates:
+            candidates.append(relative)
+
+    sections: list[str] = [
+        (
+            "AUTHORITY ORDER:\n"
+            "1. Current checked-in Python source and normative grammar.\n"
+            "2. Current task contract and existing task artifacts.\n"
+            "3. Design/spec prose.\n"
+            "4. Model assumptions.\n\n"
+            "Never import, instantiate, or reference a project symbol "
+            "unless the authoritative source below proves that symbol "
+            "exists. Do not invent AST nodes, capabilities, declarations, "
+            "or syntax to satisfy prose. If prose describes a future "
+            "construct that the current AST/grammar cannot represent, "
+            "implement only the semantics expressible by the current "
+            "language and document the limitation."
+        )
+    ]
+
+    used = len(sections[0])
+
+    for relative in candidates:
+        candidate = ROOT / relative
+
+        if not candidate.is_file():
+            continue
+
+        try:
+            content = candidate.read_text(
+                encoding="utf-8"
+            )
+        except (OSError, UnicodeDecodeError):
+            continue
+
+        per_file_limit = (
+            12_000
+            if relative == target
+            else 6_000
+        )
+
+        if len(content) > per_file_limit:
+            content = (
+                content[:per_file_limit]
+                + "\n...[file compacted]...\n"
+            )
+
+        section = (
+            "\n\n===== AUTHORITATIVE FILE: "
+            + relative
+            + " =====\n"
+            + content
+        )
+
+        if (
+            used + len(section)
+            > SPECIALIST_AUTHORITY_CONTEXT_MAX
+        ):
+            continue
+
+        sections.append(section)
+        used += len(section)
+
+    surfaces: list[str] = []
+
+    src_root = ROOT / "src/vectis"
+
+    if src_root.is_dir():
+        for source_path in sorted(
+            src_root.glob("*.py")
+        ):
+            surface = _python_public_surface(
+                source_path
+            )
+
+            if not surface:
+                continue
+
+            surfaces.append(
+                "\n### "
+                + source_path.relative_to(
+                    ROOT
+                ).as_posix()
+                + "\n"
+                + surface
+            )
+
+    if surfaces:
+        surface_section = (
+            "\n\n===== CANONICAL PYTHON API SURFACE ====="
+            + "".join(surfaces)
+        )
+
+        remaining = (
+            SPECIALIST_AUTHORITY_CONTEXT_MAX
+            - used
+        )
+
+        if remaining > 1_000:
+            sections.append(
+                surface_section[:remaining]
+            )
+
+    return "".join(sections)
+
 def specialist_prompt(
     task: dict[str, Any],
     role: dict[str, Any],
@@ -1083,11 +1654,8 @@ ACTIVE TASK:
 ACCEPTANCE:
 {acceptance}
 
-PREVIOUS FAILURE OR REVIEW FEEDBACK:
-{state.get("last_feedback") or "(none)"}
-
-PREVIOUS QUALITY OUTPUT:
-{state.get("last_quality_output") or "(none)"}
+DETERMINISTIC FAILURE / REVIEW EVIDENCE:
+{compact_failure_evidence(state)}
 
 COMPLETED BASELINE TASKS:
 {completed_task_baseline(task["id"])}
@@ -1111,8 +1679,8 @@ keep it minimal and preserve all previously tested behavior.
 Your tests must exercise the CURRENT task. Do not replace tests
 for completed tasks with alternate assumptions about their APIs.
 
-PROJECT CONTEXT:
-{repository_context()}
+COMPACT PROJECT CONTEXT:
+{compact_repository_context()}
 
 Return JSON only:
 
@@ -1591,7 +2159,7 @@ def main() -> int:
                 state = load_state()
                 state[
                     "last_quality_output"
-                ] = output[-30000:]
+                ] = compact_gate_output(output)
 
                 save_state(state)
 
@@ -1717,7 +2285,7 @@ def main() -> int:
 
             state[
                 "last_quality_output"
-            ] = quality_output[-30000:]
+            ] = quality_compact_gate_output(output)
 
             if not passed:
                 state["repair_failures"] = (
@@ -1818,7 +2386,7 @@ def main() -> int:
 
                 state[
                     "last_quality_output"
-                ] = task_output[-30000:]
+                ] = task_compact_gate_output(output)
 
                 state[
                     "last_feedback"
@@ -1826,7 +2394,7 @@ def main() -> int:
                     "Deterministic task acceptance gate failed. "
                     "Repair only the task-specific contract based "
                     "on the evidence below.\n\n"
-                    + task_output[-12000:]
+                    + compact_gate_output(task_output)
                 )
 
                 save_state(
@@ -1846,7 +2414,7 @@ def main() -> int:
                     reset_to_head()
 
                     diagnostic = (
-                        task_output[-12000:]
+                        compact_gate_output(task_output)
                     )
 
                     state[
