@@ -65,7 +65,7 @@ ALLOWED_PREFIXES = (
 )
 
 
-from vectis_task_contracts import TASK_FILE_RULES
+from vectis_task_contracts import TASK_FILE_RULES, TASK_SPECS
 
 
 def task_file_boundary(
@@ -152,6 +152,314 @@ def validate_task_file_boundary(
             + str(total_content)
             + " characters; maximum is 12000. "
             + "Split work across iterations."
+        )
+
+
+
+VECTIS_CHANGE_HEADER = "VECTIS_CHANGE_V1"
+VECTIS_CONTENT_BEGIN = "<<<VECTIS_CONTENT_7F4A2B>>>"
+VECTIS_CONTENT_END = "<<<VECTIS_END_7F4A2B>>>"
+
+
+def next_task_target(
+    task_id: str,
+    state: dict[str, Any],
+) -> str:
+    # Choose exactly one task-owned artifact for the next model turn.
+    allowed = TASK_FILE_RULES.get(task_id)
+
+    if not allowed:
+        raise RuntimeError(
+            "Task "
+            + task_id
+            + " has no deterministic file boundary."
+        )
+
+    spec = TASK_SPECS.get(task_id, {})
+    evidence = (
+        str(state.get("last_quality_output", ""))
+        + "\n"
+        + str(state.get("last_feedback", ""))
+    )
+
+    # First repair the exact artifact named by deterministic evidence.
+    for relative in sorted(
+        allowed,
+        key=lambda item: (
+            evidence.find(item)
+            if item in evidence
+            else 10**9,
+            item,
+        ),
+    ):
+        if relative in evidence:
+            return relative
+
+    # Map public API failures back to their owning implementation file.
+    for module_name, symbols in spec.get(
+        "python_symbols",
+        {},
+    ).items():
+        module_path = (
+            "src/"
+            + module_name.replace(".", "/")
+            + ".py"
+        )
+
+        if module_path not in allowed:
+            continue
+
+        if (
+            module_name in evidence
+            or any(
+                str(symbol) in evidence
+                for symbol in symbols
+            )
+        ):
+            return module_path
+
+    # Build missing required artifacts in manifest order.
+    for relative in spec.get(
+        "required_files",
+        [],
+    ):
+        if relative not in allowed:
+            continue
+
+        target = ROOT / relative
+
+        if (
+            not target.is_file()
+            or target.stat().st_size == 0
+        ):
+            return relative
+
+    # Once required artifacts exist, prefer the task test surface.
+    test_file = spec.get("test_file")
+
+    if (
+        isinstance(test_file, str)
+        and test_file in allowed
+    ):
+        return test_file
+
+    return sorted(allowed)[0]
+
+
+def specialist_transport_prompt(
+    task: dict[str, Any],
+    role: dict[str, Any],
+    state: dict[str, Any],
+) -> str:
+    # Wrap the existing engineering prompt in a raw single-file protocol.
+    target = next_task_target(
+        task["id"],
+        state,
+    )
+
+    base = specialist_prompt(
+        task,
+        role,
+        state,
+    )
+
+    marker = "\nReturn JSON only:"
+
+    if marker in base:
+        base = base.split(
+            marker,
+            1,
+        )[0].rstrip()
+
+    return (
+        base
+        + "\n\n"
+        + "RAW SINGLE-FILE TRANSPORT -- THIS OVERRIDES ANY EARLIER "
+          "RESPONSE-FORMAT INSTRUCTION.\n\n"
+        + "TARGET FILE FOR THIS ITERATION:\n"
+        + target
+        + "\n\n"
+        + "Generate or repair EXACTLY that one file. "
+          "Do not return any other file. Work incrementally; later "
+          "iterations will handle the remaining task artifacts.\n\n"
+        + "Return plain text only. Do NOT return JSON. Do NOT use a "
+          "Markdown code fence. Use exactly this envelope:\n\n"
+        + VECTIS_CHANGE_HEADER
+        + "\nPATH: "
+        + target
+        + "\nCOMMIT: <short imperative commit message>\n"
+        + VECTIS_CONTENT_BEGIN
+        + "\n<complete contents of "
+        + target
+        + ">\n"
+        + VECTIS_CONTENT_END
+        + "\n\n"
+        + "The content region is raw source text. Quotes, newlines, "
+          "backslashes, braces, Markdown, HTML, JavaScript, and Python "
+          "must be written normally; do not JSON-escape them. "
+          "Keep this one artifact at or below 12000 UTF-8 bytes."
+    )
+
+
+def parse_specialist_transport(
+    text: str,
+) -> dict[str, Any]:
+    # Parse raw source transport without embedding code inside JSON.
+    if not isinstance(text, str):
+        raise ValueError(
+            "Specialist transport must be text."
+        )
+
+    header_at = text.find(
+        VECTIS_CHANGE_HEADER
+    )
+
+    if header_at < 0:
+        raise ValueError(
+            "Missing VECTIS_CHANGE_V1 transport header."
+        )
+
+    payload = text[header_at:]
+
+    begin_token = (
+        "\n"
+        + VECTIS_CONTENT_BEGIN
+        + "\n"
+    )
+
+    begin_at = payload.find(
+        begin_token
+    )
+
+    if begin_at < 0:
+        raise ValueError(
+            "Missing raw content begin marker."
+        )
+
+    prefix = payload[:begin_at]
+    content_start = (
+        begin_at
+        + len(begin_token)
+    )
+
+    end_token = (
+        "\n"
+        + VECTIS_CONTENT_END
+    )
+
+    end_at = payload.find(
+        end_token,
+        content_start,
+    )
+
+    if end_at < 0:
+        raise ValueError(
+            "Missing raw content end marker."
+        )
+
+    content = payload[
+        content_start:end_at
+    ]
+
+    path_value = None
+    commit_value = None
+
+    for line in prefix.splitlines():
+        if line.startswith("PATH: "):
+            path_value = line[
+                len("PATH: "):
+            ].strip()
+        elif line.startswith("COMMIT: "):
+            commit_value = line[
+                len("COMMIT: "):
+            ].strip()
+
+    if not path_value:
+        raise ValueError(
+            "Transport PATH is missing."
+        )
+
+    if not commit_value:
+        raise ValueError(
+            "Transport COMMIT is missing."
+        )
+
+    if "\n" in path_value or "\r" in path_value:
+        raise ValueError(
+            "Transport PATH must be one line."
+        )
+
+    if len(commit_value) > 160:
+        raise ValueError(
+            "Transport COMMIT is too long."
+        )
+
+    if not content:
+        raise ValueError(
+            "Transport content is empty."
+        )
+
+    content = content.rstrip("\r\n") + "\n"
+
+    if len(
+        content.encode("utf-8")
+    ) > 12_000:
+        raise ValueError(
+            "Raw single-file transport exceeded 12000 bytes."
+        )
+
+    validate_path(
+        path_value
+    )
+
+    return {
+        "files": [
+            {
+                "path": path_value,
+                "content": content,
+            }
+        ],
+        "commit_message": commit_value,
+    }
+
+
+def validate_specialist_target(
+    task_id: str,
+    state: dict[str, Any],
+    proposal: dict[str, Any],
+) -> None:
+    # Require the proposal to match the controller-selected artifact.
+    expected = next_task_target(
+        task_id,
+        state,
+    )
+
+    files = proposal.get(
+        "files",
+        [],
+    )
+
+    if len(files) != 1:
+        raise ValueError(
+            "Raw specialist transport must contain exactly one file."
+        )
+
+    actual = str(
+        files[0].get(
+            "path",
+            "",
+        )
+    )
+
+    if actual != expected:
+        raise ValueError(
+            "Task "
+            + task_id
+            + " specialist returned "
+            + actual
+            + " but controller selected "
+            + expected
+            + "."
         )
 
 
@@ -1254,12 +1562,12 @@ def main() -> int:
         try:
             proposal = generate_parsed(
                 model,
-                specialist_prompt(
+                specialist_transport_prompt(
                     task,
                     role,
                     state,
                 ),
-                parse_change,
+                parse_specialist_transport,
                 f"{task['id']} specialist",
             )
 
@@ -1267,6 +1575,12 @@ def main() -> int:
                 raise RuntimeError(
                     "Specialist returned no files."
                 )
+
+            validate_specialist_target(
+                task["id"],
+                state,
+                proposal,
+            )
 
             validate_task_file_boundary(
                 task["id"],
