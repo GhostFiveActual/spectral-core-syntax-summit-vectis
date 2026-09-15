@@ -671,12 +671,13 @@ def choose_model() -> str:
 def generate(
     model: str,
     prompt: str,
+    *,
+    json_mode: bool = True,
 ) -> str:
     payload = {
         "model": model,
         "prompt": prompt,
         "stream": False,
-        "format": "json",
         "think": False,
         "options": {
             "temperature": 0.10,
@@ -684,6 +685,9 @@ def generate(
             "num_predict": 4096,
         },
     }
+
+    if json_mode:
+        payload["format"] = "json"
 
     request = urllib.request.Request(
         f"{OLLAMA_URL}/api/generate",
@@ -726,8 +730,10 @@ def generate_parsed(
     prompt: str,
     parser: Any,
     label: str,
+    *,
+    json_mode: bool = True,
 ) -> Any:
-    """Generate and validate structured output with bounded retries."""
+    """Generate and validate model output with bounded retries."""
 
     last_error: Exception | None = None
     correction = ""
@@ -739,18 +745,33 @@ def generate_parsed(
         attempt_prompt = prompt
 
         if correction:
-            attempt_prompt += (
-                "\n\nSTRUCTURED OUTPUT CORRECTION:\n"
-                + correction
-                + "\n"
-                + "Return a complete JSON object only. "
-                + "Do not use Markdown fences. "
-                + "Do not add commentary before or after JSON."
-            )
+            if json_mode:
+                attempt_prompt += (
+                    "\n\nSTRUCTURED OUTPUT CORRECTION:\n"
+                    + correction
+                    + "\n"
+                    + "Return a complete JSON object only. "
+                    + "Do not use Markdown fences. "
+                    + "Do not add commentary before or after JSON."
+                )
+            else:
+                attempt_prompt += (
+                    "\n\nRAW TRANSPORT CORRECTION:\n"
+                    + correction
+                    + "\n"
+                    + "Return the complete VECTIS_CHANGE_V1 raw "
+                      "single-file envelope exactly as requested. "
+                    + "Do not return JSON. "
+                    + "Do not use Markdown fences. "
+                    + "Include PATH, COMMIT, the exact content-begin "
+                      "marker, complete file contents, and the exact "
+                      "content-end marker."
+                )
 
         raw = generate(
             model,
             attempt_prompt,
+            json_mode=json_mode,
         )
 
         try:
@@ -759,8 +780,14 @@ def generate_parsed(
         except Exception as exc:
             last_error = exc
 
+            response_kind = (
+                "JSON"
+                if json_mode
+                else "raw"
+            )
+
             log(
-                f"{label} structured response rejected "
+                f"{label} {response_kind} response rejected "
                 f"attempt {attempt}/"
                 f"{MAX_STRUCTURED_RESPONSE_ATTEMPTS}: "
                 f"{type(exc).__name__}: {exc}"
@@ -775,8 +802,14 @@ def generate_parsed(
                 f"examples/, tools/, and artifacts/qa/."
             )
 
+    validation_kind = (
+        "JSON"
+        if json_mode
+        else "raw transport"
+    )
+
     raise RuntimeError(
-        f"{label} failed structured validation after "
+        f"{label} failed {validation_kind} validation after "
         f"{MAX_STRUCTURED_RESPONSE_ATTEMPTS} attempts: "
         f"{last_error}"
     )
@@ -1569,6 +1602,7 @@ def main() -> int:
                 ),
                 parse_specialist_transport,
                 f"{task['id']} specialist",
+                json_mode=False,
             )
 
             if not proposal["files"]:
