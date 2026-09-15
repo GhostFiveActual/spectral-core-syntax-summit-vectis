@@ -452,9 +452,12 @@ def deterministic_repair_hints(
     target: str,
     evidence: str,
 ) -> str:
-    """Derive repair hints from actual repository symbol ownership."""
+    """Derive repair hints only from the current repository and evidence."""
     import ast
+    import importlib
+    import inspect
     import re
+    import sys
 
     target_path = validate_path(
         target
@@ -463,32 +466,25 @@ def deterministic_repair_hints(
     if target_path.suffix != ".py":
         return "(none)"
 
-    src_root = (
-        ROOT
-        / "src"
-    )
+    src_root = ROOT / "src"
+    package_root = src_root / "vectis"
 
     providers: dict[
         str,
         list[str],
     ] = {}
 
-    # Build symbol -> module ownership from the actual VECTIS source tree.
+    # Build symbol ownership from actual definitions in src/vectis.
     for source_path in sorted(
-        (
-            src_root
-            / "vectis"
-        ).glob(
+        package_root.glob(
             "*.py"
         )
     ):
         try:
-            source = source_path.read_text(
-                encoding="utf-8"
-            )
-
-            tree = ast.parse(
-                source,
+            module_tree = ast.parse(
+                source_path.read_text(
+                    encoding="utf-8"
+                ),
                 filename=str(
                     source_path
                 ),
@@ -524,9 +520,9 @@ def deterministic_repair_hints(
         if not module_name:
             continue
 
-        for node in tree.body:
+        for definition in module_tree.body:
             if isinstance(
-                node,
+                definition,
                 (
                     ast.ClassDef,
                     ast.FunctionDef,
@@ -534,7 +530,7 @@ def deterministic_repair_hints(
                 ),
             ):
                 providers.setdefault(
-                    node.name,
+                    definition.name,
                     [],
                 ).append(
                     module_name
@@ -542,7 +538,12 @@ def deterministic_repair_hints(
 
     requested: set[str] = set()
 
-    # Direct deterministic runtime evidence.
+    constructor_errors: dict[
+        str,
+        set[str],
+    ] = {}
+
+    # Undefined names.
     for match in re.finditer(
         r"NameError:\s+name\s+['\"]"
         r"([A-Za-z_][A-Za-z0-9_]*)"
@@ -553,6 +554,7 @@ def deterministic_repair_hints(
             match.group(1)
         )
 
+    # Invalid imports.
     for match in re.finditer(
         r"ImportError:\s+cannot\s+import\s+name\s+['\"]"
         r"([A-Za-z_][A-Za-z0-9_]*)"
@@ -563,13 +565,38 @@ def deterministic_repair_hints(
             match.group(1)
         )
 
-    # Also inspect the current target for repository-owned names that are
-    # referenced but not currently bound. This allows one repair turn to
-    # anticipate the next obvious missing import rather than waiting for
-    # another NameError.
+    # Constructor rejected-keyword failures.
+    for match in re.finditer(
+        r"([A-Za-z_][A-Za-z0-9_]*)"
+        r"\.__init__\(\)"
+        r"\s+got\s+an\s+unexpected\s+keyword\s+argument\s+['\"]"
+        r"([A-Za-z_][A-Za-z0-9_]*)['\"]",
+        evidence,
+    ):
+        class_name = match.group(
+            1
+        )
+
+        keyword = match.group(
+            2
+        )
+
+        requested.add(
+            class_name
+        )
+
+        constructor_errors.setdefault(
+            class_name,
+            set(),
+        ).add(
+            keyword
+        )
+
     try:
-        target_source = target_path.read_text(
-            encoding="utf-8"
+        target_source = (
+            target_path.read_text(
+                encoding="utf-8"
+            )
         )
 
         target_tree = ast.parse(
@@ -584,18 +611,27 @@ def deterministic_repair_hints(
     ):
         target_tree = None
 
+    provider_mismatches: set[
+        tuple[
+            str,
+            str,
+            tuple[str, ...],
+        ]
+    ] = set()
+
+    # Find currently unresolved names and imports from non-defining modules.
     if target_tree is not None:
         bound: set[str] = set()
         loaded: set[str] = set()
 
-        for node in ast.walk(
+        for target_node in ast.walk(
             target_tree
         ):
             if isinstance(
-                node,
+                target_node,
                 ast.Import,
             ):
-                for alias in node.names:
+                for alias in target_node.names:
                     bound.add(
                         alias.asname
                         or alias.name.split(
@@ -605,17 +641,46 @@ def deterministic_repair_hints(
                     )
 
             elif isinstance(
-                node,
+                target_node,
                 ast.ImportFrom,
             ):
-                for alias in node.names:
+                imported_module = (
+                    target_node.module
+                    or ""
+                )
+
+                for alias in target_node.names:
                     bound.add(
                         alias.asname
                         or alias.name
                     )
 
+                    canonical = tuple(
+                        sorted(
+                            set(
+                                providers.get(
+                                    alias.name,
+                                    [],
+                                )
+                            )
+                        )
+                    )
+
+                    if (
+                        canonical
+                        and imported_module
+                        not in canonical
+                    ):
+                        provider_mismatches.add(
+                            (
+                                alias.name,
+                                imported_module,
+                                canonical,
+                            )
+                        )
+
             elif isinstance(
-                node,
+                target_node,
                 (
                     ast.FunctionDef,
                     ast.AsyncFunctionDef,
@@ -623,35 +688,35 @@ def deterministic_repair_hints(
                 ),
             ):
                 bound.add(
-                    node.name
+                    target_node.name
                 )
 
             elif isinstance(
-                node,
+                target_node,
                 ast.arg,
             ):
                 bound.add(
-                    node.arg
+                    target_node.arg
                 )
 
             elif isinstance(
-                node,
+                target_node,
                 ast.Name,
             ):
                 if isinstance(
-                    node.ctx,
+                    target_node.ctx,
                     ast.Store,
                 ):
                     bound.add(
-                        node.id
+                        target_node.id
                     )
 
                 elif isinstance(
-                    node.ctx,
+                    target_node.ctx,
                     ast.Load,
                 ):
                     loaded.add(
-                        node.id
+                        target_node.id
                     )
 
         for name in (
@@ -663,8 +728,9 @@ def deterministic_repair_hints(
                     name
                 )
 
-    hints = []
+    hints: list[str] = []
 
+    # Existing deterministic provider hints.
     for name in sorted(
         requested
     ):
@@ -700,7 +766,108 @@ def deterministic_repair_hints(
                 + ", ".join(
                     modules
                 )
-                + ". Inspect authoritative APIs before choosing."
+            )
+
+    # Detect imports relying on transitive exposure instead of definition.
+    for (
+        name,
+        imported_module,
+        canonical,
+    ) in sorted(
+        provider_mismatches
+    ):
+        hints.append(
+            "- "
+            + name
+            + " is currently imported from "
+            + imported_module
+            + ", but its repository definition is in "
+            + ", ".join(
+                canonical
+            )
+            + ". Prefer the defining module unless a deliberate "
+              "public re-export is documented."
+        )
+
+    # Load source modules only for evidence-implicated constructors.
+    src_text = str(
+        src_root
+    )
+
+    if src_text not in sys.path:
+        sys.path.insert(
+            0,
+            src_text,
+        )
+
+    for class_name in sorted(
+        constructor_errors
+    ):
+        modules = sorted(
+            set(
+                providers.get(
+                    class_name,
+                    [],
+                )
+            )
+        )
+
+        if len(modules) != 1:
+            continue
+
+        module_name = modules[0]
+
+        try:
+            importlib.invalidate_caches()
+
+            module = importlib.import_module(
+                module_name
+            )
+
+            value = getattr(
+                module,
+                class_name
+            )
+
+            signature = inspect.signature(
+                value
+            )
+
+        except Exception as exc:
+            hints.append(
+                "- Unable to introspect "
+                + class_name
+                + " from "
+                + module_name
+                + ": "
+                + type(exc).__name__
+                + ": "
+                + str(exc)
+            )
+
+            continue
+
+        hints.append(
+            "- Canonical runtime signature: "
+            + class_name
+            + str(
+                signature
+            )
+        )
+
+        for keyword in sorted(
+            constructor_errors[
+                class_name
+            ]
+        ):
+            hints.append(
+                "- Deterministic evidence proves keyword '"
+                + keyword
+                + "' is NOT accepted by "
+                + class_name
+                + ".__init__. Rewrite that call to the "
+                  "canonical signature above; do not preserve "
+                  "the rejected keyword."
             )
 
     if not hints:
@@ -709,6 +876,8 @@ def deterministic_repair_hints(
     return "\n".join(
         hints
     )
+
+
 
 
 def specialist_transport_prompt(
