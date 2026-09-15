@@ -1528,91 +1528,112 @@ def generate(
 
 
 def generate_parsed(
-    model: str,
-    prompt: str,
-    parser: Any,
-    label: str,
+    model,
+    prompt,
+    parser,
+    label,
     *,
-    json_mode: bool = True,
-) -> Any:
-    """Generate and validate model output with bounded retries."""
+    json_mode=True,
+):
+    """Generate, validate, and escalate stalled direct-body repairs."""
+    max_attempts = 5
+    fallback_model = "qwen3:8b"
 
-    last_error: Exception | None = None
-    correction = ""
+    last_error = None
+    working_prompt = prompt
+    unchanged_rejections = 0
 
     for attempt in range(
         1,
-        MAX_STRUCTURED_RESPONSE_ATTEMPTS + 1,
+        max_attempts + 1,
     ):
-        attempt_prompt = prompt
+        use_fallback = (
+            not json_mode
+            and unchanged_rejections >= 2
+        )
 
-        if correction:
-            if json_mode:
-                attempt_prompt += (
-                    "\n\nSTRUCTURED OUTPUT CORRECTION:\n"
-                    + correction
-                    + "\n"
-                    + "Return a complete JSON object only. "
-                    + "Do not use Markdown fences. "
-                    + "Do not add commentary before or after JSON."
+        active_model = (
+            fallback_model
+            if use_fallback
+            else model
+        )
+
+        attempt_prompt = working_prompt
+
+        if use_fallback:
+            attempt_prompt = (
+                prompt
+                + "\n\n"
+                + "ESCALATION MODE:\n"
+                + "The primary coding model repeatedly returned the "
+                  "current target unchanged despite deterministic failure "
+                  "evidence. You are the fallback repair model. Make a real, "
+                  "minimal correction to the current target. Do not copy the "
+                  "broken file unchanged. Follow canonical repository APIs, "
+                  "runtime signatures, deterministic repair hints, and the "
+                  "deepest current failure. Return only the complete target "
+                  "file contents.\n\n"
+                + "LATEST REJECTION:\n"
+                + (
+                    last_error
+                    or "(none)"
                 )
-            else:
-                attempt_prompt += (
-                    "\n\nDIRECT FILE-BODY CORRECTION:\n"
-                    + correction
-                    + "\n"
-                    + "Return ONLY the complete contents of the "
-                      "already-selected target file. Your response itself "
-                      "is the complete file body. Do not return JSON, a "
-                      "path, a commit message, transport headers, begin/end "
-                      "markers, wrapper fences, or commentary."
-                )
+            )
 
         raw = generate(
-            model,
+            active_model,
             attempt_prompt,
             json_mode=json_mode,
         )
 
         try:
-            return parser(raw)
+            return parser(
+                raw
+            )
 
         except Exception as exc:
-            last_error = exc
-
-            response_kind = (
-                "JSON"
-                if json_mode
-                else "raw"
+            last_error = (
+                type(exc).__name__
+                + ": "
+                + str(exc)
             )
 
-            log(
-                f"{label} {response_kind} response rejected "
-                f"attempt {attempt}/"
-                f"{MAX_STRUCTURED_RESPONSE_ATTEMPTS}: "
-                f"{type(exc).__name__}: {exc}"
-            )
+            if (
+                not json_mode
+                and "byte-equivalent to the current target"
+                in str(exc)
+            ):
+                unchanged_rejections += 1
 
-            correction = (
-                f"Your previous response was rejected: "
-                f"{type(exc).__name__}: {exc}. "
-                f"Correct that exact problem. "
-                f"Do not propose files under competition/. "
-                f"Writable prefixes are only src/, tests/, docs/, "
-                f"examples/, tools/, and artifacts/qa/."
-            )
+            else:
+                unchanged_rejections = 0
 
-    validation_kind = (
-        "JSON"
-        if json_mode
-        else "raw transport"
-    )
+            # Keep retry correction compact. The original authoritative
+            # prompt remains intact and is always the base for the next try.
+            working_prompt = (
+                prompt
+                + "\n\n"
+                + "PREVIOUS RESPONSE REJECTED:\n"
+                + last_error
+                + "\n\n"
+                + "Correct the rejected response. Return only content that "
+                  "satisfies the original output contract."
+            )
 
     raise RuntimeError(
-        f"{label} failed {validation_kind} validation after "
-        f"{MAX_STRUCTURED_RESPONSE_ATTEMPTS} attempts: "
-        f"{last_error}"
+        label
+        + " failed raw transport validation after "
+        + str(
+            max_attempts
+        )
+        + " attempts: "
+        + (
+            last_error
+            or "unknown validation failure"
+        )
     )
+
+
 
 
 def next_task(
