@@ -2677,6 +2677,15 @@ def main() -> int:
                 quality_gate()
             )
 
+            # Capture the previous deterministic failure BEFORE
+            # replacing state with this iteration's quality output.
+            previous_quality_output = str(
+                state.get(
+                    "last_quality_output",
+                    "",
+                )
+            )
+
             state[
                 "last_quality_output"
             ] = compact_gate_output(quality_output)
@@ -2700,12 +2709,7 @@ def main() -> int:
                 )
 
                 previous_fingerprint = quality_failure_fingerprint(
-                    str(
-                        state.get(
-                            "last_quality_output",
-                            "",
-                        )
-                    )
+                    previous_quality_output
                 )
 
                 current_fingerprint = quality_failure_fingerprint(
