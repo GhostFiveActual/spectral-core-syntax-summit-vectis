@@ -210,16 +210,12 @@ def failure_target_from_evidence(
 
         return None
 
-    # Strongest evidence: an exact task-owned failing file.
-    # Scan ALL matches because stdlib frames precede project frames.
-    direct_patterns = (
+    # Explicit deterministic artifact errors identify the owner directly.
+    for pattern in (
         r"Error compiling [\"']([^\"']+)[\"']",
-        r"File [\"']([^\"']+\.py)[\"']",
         r"([^\s:]+\.py)\s+has\s+\d+\s+tests;",
         r"([^\s:]+\.md)\s+missing required concept",
-    )
-
-    for pattern in direct_patterns:
+    ):
         for match in re.finditer(
             pattern,
             evidence,
@@ -232,9 +228,31 @@ def failure_target_from_evidence(
             if candidate is not None:
                 return candidate
 
+    # Python traceback frames are ordered caller -> callee. The deepest
+    # task-owned frame is therefore the strongest runtime ownership signal.
+    traceback_candidates = []
+
+    for match in re.finditer(
+        r"File [\"']([^\"']+\.py)[\"']",
+        evidence,
+        flags=re.IGNORECASE,
+    ):
+        candidate = normalize_candidate(
+            match.group(1)
+        )
+
+        if candidate is not None:
+            traceback_candidates.append(
+                candidate
+            )
+
+    if traceback_candidates:
+        return traceback_candidates[-1]
+
     lower = evidence.lower()
 
-    # Task-owned implementation API failures outrank test ownership.
+    # Public API failures without a useful project traceback still map to
+    # the task module that owns the contracted symbol.
     for module_name, symbols in spec.get(
         "python_symbols",
         {},
@@ -266,7 +284,9 @@ def failure_target_from_evidence(
         module_named_in_exception = bool(
             re.search(
                 r"(?:ImportError|AttributeError|ModuleNotFoundError):[^\n]*"
-                + re.escape(module_name),
+                + re.escape(
+                    module_name
+                ),
                 evidence,
                 flags=re.IGNORECASE,
             )
@@ -282,14 +302,17 @@ def failure_target_from_evidence(
             ):
                 return module_path
 
-    # unittest collection/import failures identify the contracted test file
-    # even when compact evidence omitted its filesystem traceback frame.
+    # unittest collection failures can identify the task test file even when
+    # a path frame is absent from compact evidence.
     test_file = spec.get(
         "test_file"
     )
 
     if (
-        isinstance(test_file, str)
+        isinstance(
+            test_file,
+            str,
+        )
         and test_file in allowed
     ):
         test_module = pathlib.Path(
@@ -301,16 +324,24 @@ def failure_target_from_evidence(
 
         test_patterns = (
             r"(?:ERROR|FAIL):[^\n]*\b"
-            + re.escape(test_module)
+            + re.escape(
+                test_module
+            )
             + r"\b",
             r"_FailedTest\."
-            + re.escape(test_module)
+            + re.escape(
+                test_module
+            )
             + r"\b",
             r"Failed to import test module:\s*"
-            + re.escape(test_module)
+            + re.escape(
+                test_module
+            )
             + r"\b",
             r"ERROR collecting[^\n]*"
-            + re.escape(test_name),
+            + re.escape(
+                test_name
+            ),
         )
 
         if any(
@@ -323,8 +354,7 @@ def failure_target_from_evidence(
         ):
             return test_file
 
-    # Missing artifacts are normal staged progression. Consider them only
-    # after active deterministic failures have been resolved.
+    # Missing artifacts are staged progression after active failures clear.
     for match in re.finditer(
         r"missing required artifact:\s*([^\s]+)",
         evidence,
@@ -2019,6 +2049,49 @@ def task_gate_reports_incomplete(
     )
 
 
+
+def quality_failure_fingerprint(
+    output: str,
+) -> str:
+    import re
+
+    retained = []
+
+    for line in output.splitlines():
+        if not _is_failure_line(
+            line
+        ):
+            continue
+
+        normalized = line.strip()
+
+        normalized = re.sub(
+            r"\bline\s+\d+\b",
+            "line #",
+            normalized,
+        )
+
+        normalized = re.sub(
+            r"\b0x[0-9a-fA-F]+\b",
+            "0x#",
+            normalized,
+        )
+
+        normalized = re.sub(
+            r"\s+",
+            " ",
+            normalized,
+        )
+
+        retained.append(
+            normalized
+        )
+
+    return "\n".join(
+        retained
+    )
+
+
 def quality_gate() -> tuple[bool, str]:
     result = run(
         [
@@ -2507,11 +2580,58 @@ def main() -> int:
             ] = compact_gate_output(quality_output)
 
             if not passed:
-                if proposal_snapshot is not None:
-                    restore_proposal_snapshot(
-                        proposal_snapshot
+                current_compact = compact_gate_output(
+                    quality_output
+                )
+
+                failure_target = failure_target_from_evidence(
+                    task["id"],
+                    quality_output,
+                )
+
+                task_local_failure = (
+                    failure_target
+                    in TASK_FILE_RULES.get(
+                        task["id"],
+                        set(),
                     )
+                )
+
+                previous_fingerprint = quality_failure_fingerprint(
+                    str(
+                        state.get(
+                            "last_quality_output",
+                            "",
+                        )
+                    )
+                )
+
+                current_fingerprint = quality_failure_fingerprint(
+                    current_compact
+                )
+
+                if task_local_failure:
+                    # Keep the newly generated, syntax-valid task artifact.
+                    # A subsequent iteration can repair the next latent error
+                    # instead of restarting from the old snapshot.
                     proposal_snapshot = None
+
+                    if (
+                        current_fingerprint
+                        and current_fingerprint
+                        != previous_fingerprint
+                    ):
+                        # The existing increment below turns -1 into 0,
+                        # resetting the budget after real forward progress.
+                        state["repair_failures"] = -1
+                else:
+                    # Protected regression outside the current task:
+                    # restore only this proposal, never all staged WIP.
+                    if proposal_snapshot is not None:
+                        restore_proposal_snapshot(
+                            proposal_snapshot
+                        )
+                        proposal_snapshot = None
 
                 state["repair_failures"] = (
                     int(
