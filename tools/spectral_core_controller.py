@@ -2285,7 +2285,7 @@ def main() -> int:
 
             state[
                 "last_quality_output"
-            ] = quality_compact_gate_output(output)
+            ] = compact_gate_output(quality_output)
 
             if not passed:
                 state["repair_failures"] = (
@@ -2386,7 +2386,7 @@ def main() -> int:
 
                 state[
                     "last_quality_output"
-                ] = task_compact_gate_output(output)
+                ] = compact_gate_output(task_output)
 
                 state[
                     "last_feedback"
