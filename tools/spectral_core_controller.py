@@ -329,12 +329,14 @@ def specialist_transport_prompt(
     task: dict[str, Any],
     role: dict[str, Any],
     state: dict[str, Any],
+    target: str | None = None,
 ) -> str:
-    # Wrap the existing engineering prompt in a raw single-file protocol.
-    target = next_task_target(
-        task["id"],
-        state,
-    )
+    # The controller owns the target path. The model returns only file bytes.
+    if target is None:
+        target = next_task_target(
+            task["id"],
+            state,
+        )
 
     base = specialist_prompt(
         task,
@@ -360,145 +362,77 @@ def specialist_transport_prompt(
         + "\n\nAUTHORITATIVE DEPENDENCY CONTEXT:\n"
         + authority
         + "\n\n"
-        + "RAW SINGLE-FILE TRANSPORT -- THIS OVERRIDES ANY EARLIER "
+        + "DIRECT SINGLE-FILE BODY MODE -- THIS OVERRIDES ANY EARLIER "
           "RESPONSE-FORMAT INSTRUCTION.\n\n"
         + "TARGET FILE FOR THIS ITERATION:\n"
         + target
         + "\n\n"
-        + "Generate or repair EXACTLY that one file. "
-          "Do not return any other file. Work incrementally; later "
-          "iterations will handle the remaining task artifacts.\n\n"
-        + "Return plain text only. Do NOT return JSON. Do NOT use a "
-          "Markdown code fence. Use exactly this envelope:\n\n"
-        + VECTIS_CHANGE_HEADER
-        + "\nPATH: "
-        + target
-        + "\nCOMMIT: <short imperative commit message>\n"
-        + VECTIS_CONTENT_BEGIN
-        + "\n<complete contents of "
-        + target
-        + ">\n"
-        + VECTIS_CONTENT_END
-        + "\n\n"
-        + "The content region is raw source text. Quotes, newlines, "
-          "backslashes, braces, Markdown, HTML, JavaScript, and Python "
-          "must be written normally; do not JSON-escape them. "
-          "Keep this one artifact at or below 12000 UTF-8 bytes."
+        + "The controller already owns and validates that exact path. "
+          "Generate or repair EXACTLY that one file. Do not select, name, "
+          "or describe any path. Do not return any other artifact.\n\n"
+        + "Your entire response becomes the contents of the target file. "
+          "Return ONLY the complete file body. Do NOT return JSON. "
+          "Do NOT include PATH, COMMIT, transport headers, begin/end "
+          "markers, Markdown wrapper fences, or commentary before or "
+          "after the file body.\n\n"
+        + "For source-code targets, the first response character must be "
+          "the first character of valid source and the final response "
+          "character must belong to the file itself. Markdown documents "
+          "may contain legitimate Markdown code fences as part of their "
+          "document body. Keep the complete artifact at or below 12000 "
+          "UTF-8 bytes."
     )
 
 
 def parse_specialist_transport(
     text: str,
+    target: str,
 ) -> dict[str, Any]:
-    # Parse raw source transport without embedding code inside JSON.
-    if not isinstance(text, str):
+    # Convert one raw model response directly into the controller-owned file.
+    if not isinstance(
+        text,
+        str,
+    ):
         raise ValueError(
-            "Specialist transport must be text."
+            "Specialist body must be text."
         )
 
-    header_at = text.find(
-        VECTIS_CHANGE_HEADER
+    path_value = validate_path(
+        target
+    ).as_posix()
+
+    content = text.strip(
+        "\r\n"
     )
 
-    if header_at < 0:
+    if not content.strip():
         raise ValueError(
-            "Missing VECTIS_CHANGE_V1 transport header."
+            "Specialist body is empty."
         )
 
-    payload = text[header_at:]
+    suffix = pathlib.Path(
+        path_value
+    ).suffix.lower()
 
-    begin_token = (
-        "\n"
-        + VECTIS_CONTENT_BEGIN
-        + "\n"
-    )
-
-    begin_at = payload.find(
-        begin_token
-    )
-
-    if begin_at < 0:
-        raise ValueError(
-            "Missing raw content begin marker."
-        )
-
-    prefix = payload[:begin_at]
-    content_start = (
-        begin_at
-        + len(begin_token)
-    )
-
-    end_token = (
-        "\n"
-        + VECTIS_CONTENT_END
-    )
-
-    end_at = payload.find(
-        end_token,
-        content_start,
-    )
-
-    if end_at < 0:
-        raise ValueError(
-            "Missing raw content end marker."
-        )
-
-    content = payload[
-        content_start:end_at
-    ]
-
-    path_value = None
-    commit_value = None
-
-    for line in prefix.splitlines():
-        if line.startswith("PATH: "):
-            path_value = line[
-                len("PATH: "):
-            ].strip()
-        elif line.startswith("COMMIT: "):
-            commit_value = line[
-                len("COMMIT: "):
-            ].strip()
-
-    if not path_value:
-        raise ValueError(
-            "Transport PATH is missing."
-        )
-
-    if not commit_value:
-        raise ValueError(
-            "Transport COMMIT is missing."
-        )
-
-    if "\n" in path_value or "\r" in path_value:
-        raise ValueError(
-            "Transport PATH must be one line."
-        )
-
-    if len(commit_value) > 160:
-        raise ValueError(
-            "Transport COMMIT is too long."
-        )
-
-    if not content:
-        raise ValueError(
-            "Transport content is empty."
-        )
-
-    content = content.rstrip("\r\n") + "\n"
-
-    suffix = pathlib.Path(path_value).suffix.lower()
-
-    if suffix in {
+    code_suffixes = {
         ".py",
         ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
         ".html",
         ".css",
+        ".sh",
         ".vectis",
-    } and "```" in content:
+    }
+
+    if (
+        suffix in code_suffixes
+        and "```" in content
+    ):
         raise ValueError(
-            "Raw code artifact contains a Markdown code fence. "
-            "Return only the file contents."
+            "Source artifact contains a Markdown wrapper fence. "
+            "Return only the file body."
         )
 
     if suffix == ".py":
@@ -514,6 +448,7 @@ def parse_specialist_transport(
                 if exc.lineno is not None
                 else "unknown"
             )
+
             raise ValueError(
                 "Generated Python syntax is invalid at line "
                 + line
@@ -521,16 +456,31 @@ def parse_specialist_transport(
                 + str(exc.msg)
             ) from exc
 
-    if len(
-        content.encode("utf-8")
-    ) > 12_000:
+    content = content.rstrip(
+        "\r\n"
+    ) + "\n"
+
+    size = len(
+        content.encode(
+            "utf-8"
+        )
+    )
+
+    if size > 12_000:
         raise ValueError(
-            "Raw single-file transport exceeded 12000 bytes."
+            "Direct specialist body exceeded 12000 UTF-8 bytes."
         )
 
-    validate_path(
-        path_value
-    )
+    if path_value.startswith(
+        "docs/"
+    ):
+        commit_type = "docs"
+    elif path_value.startswith(
+        "tests/"
+    ):
+        commit_type = "test"
+    else:
+        commit_type = "feat"
 
     return {
         "files": [
@@ -539,9 +489,14 @@ def parse_specialist_transport(
                 "content": content,
             }
         ],
-        "commit_message": commit_value,
+        "commit_message": (
+            commit_type
+            + ": update "
+            + pathlib.Path(
+                path_value
+            ).name
+        ),
     }
-
 
 def validate_specialist_target(
     task_id: str,
@@ -876,16 +831,14 @@ def generate_parsed(
                 )
             else:
                 attempt_prompt += (
-                    "\n\nRAW TRANSPORT CORRECTION:\n"
+                    "\n\nDIRECT FILE-BODY CORRECTION:\n"
                     + correction
                     + "\n"
-                    + "Return the complete VECTIS_CHANGE_V1 raw "
-                      "single-file envelope exactly as requested. "
-                    + "Do not return JSON. "
-                    + "Do not use Markdown fences. "
-                    + "Include PATH, COMMIT, the exact content-begin "
-                      "marker, complete file contents, and the exact "
-                      "content-end marker."
+                    + "Return ONLY the complete contents of the "
+                      "already-selected target file. Your response itself "
+                      "is the complete file body. Do not return JSON, a "
+                      "path, a commit message, transport headers, begin/end "
+                      "markers, wrapper fences, or commentary."
                 )
 
         raw = generate(
@@ -2337,14 +2290,23 @@ def main() -> int:
         proposal_snapshot: dict[str, bytes | None] | None = None
 
         try:
+            selected_target = next_task_target(
+                task["id"],
+                state,
+            )
+
             proposal = generate_parsed(
                 model,
                 specialist_transport_prompt(
                     task,
                     role,
                     state,
+                    target=selected_target,
                 ),
-                parse_specialist_transport,
+                lambda raw: parse_specialist_transport(
+                    raw,
+                    selected_target,
+                ),
                 f"{task['id']} specialist",
                 json_mode=False,
             )
