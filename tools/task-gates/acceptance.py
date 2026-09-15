@@ -1,6 +1,65 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+# BEGIN VECTIS TASK-GATE PYTHONPATH BOOTSTRAP
+#
+# acceptance.py runs from a src-layout repository. Some acceptance checks
+# spawn a fresh Python interpreter, so modifying only this process's
+# sys.path is insufficient. Keep the current interpreter and every child
+# Python process pointed at the canonical project package.
+import os as _vectis_gate_os
+import pathlib as _vectis_gate_pathlib
+import sys as _vectis_gate_sys
+
+_VECTIS_GATE_ROOT = (
+    _vectis_gate_pathlib.Path(__file__)
+    .resolve()
+    .parents[2]
+)
+
+_VECTIS_GATE_SRC = (
+    _VECTIS_GATE_ROOT
+    / "src"
+)
+
+for _vectis_gate_entry in (
+    str(_VECTIS_GATE_ROOT),
+    str(_VECTIS_GATE_SRC),
+):
+    if (
+        _vectis_gate_entry
+        not in _vectis_gate_sys.path
+    ):
+        _vectis_gate_sys.path.insert(
+            0,
+            _vectis_gate_entry,
+        )
+
+_vectis_gate_existing_pythonpath = (
+    _vectis_gate_os.environ.get(
+        "PYTHONPATH",
+        "",
+    )
+)
+
+_vectis_gate_pythonpath = [
+    str(_VECTIS_GATE_SRC),
+    str(_VECTIS_GATE_ROOT),
+]
+
+if _vectis_gate_existing_pythonpath:
+    _vectis_gate_pythonpath.append(
+        _vectis_gate_existing_pythonpath
+    )
+
+_vectis_gate_os.environ[
+    "PYTHONPATH"
+] = _vectis_gate_os.pathsep.join(
+    _vectis_gate_pythonpath
+)
+# END VECTIS TASK-GATE PYTHONPATH BOOTSTRAP
+
+
 import importlib
 import json
 import py_compile
