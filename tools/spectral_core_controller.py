@@ -165,57 +165,86 @@ def failure_target_from_evidence(
     task_id: str,
     evidence: str,
 ) -> str | None:
-    # Resolve only artifacts explicitly implicated by deterministic errors.
     import re
 
-    allowed = TASK_FILE_RULES.get(task_id, set())
-    spec = TASK_SPECS.get(task_id, {})
-
-    explicit_patterns = (
-        r"missing required artifact:\s*([^\s]+)",
-        r"Error compiling ['\"]([^'\"]+)['\"]",
-        r"File ['\"]([^'\"]+\.py)['\"]",
-        r"([^\s:]+\.py)\s+has\s+\d+\s+tests;",
-        r"([^\s:]+\.md)\s+missing required concept",
+    allowed = TASK_FILE_RULES.get(
+        task_id,
+        set(),
+    )
+    spec = TASK_SPECS.get(
+        task_id,
+        {},
     )
 
-    for pattern in explicit_patterns:
-        match = re.search(
-            pattern,
-            evidence,
-            flags=re.IGNORECASE,
+    def normalize_candidate(
+        raw: str,
+    ) -> str | None:
+        raw = raw.strip().rstrip(
+            ",:)"
         )
 
-        if not match:
-            continue
-
-        raw = match.group(1)
-
         try:
-            candidate_path = pathlib.Path(raw)
+            candidate_path = pathlib.Path(
+                raw
+            )
 
             if candidate_path.is_absolute():
                 candidate = (
                     candidate_path
                     .resolve()
-                    .relative_to(ROOT.resolve())
+                    .relative_to(
+                        ROOT.resolve()
+                    )
                     .as_posix()
                 )
             else:
-                candidate = candidate_path.as_posix()
+                candidate = (
+                    candidate_path
+                    .as_posix()
+                )
         except (OSError, ValueError):
-            continue
+            return None
 
         if candidate in allowed:
             return candidate
 
+        return None
+
+    # Strongest evidence: an exact task-owned failing file.
+    # Scan ALL matches because stdlib frames precede project frames.
+    direct_patterns = (
+        r"Error compiling [\"']([^\"']+)[\"']",
+        r"File [\"']([^\"']+\.py)[\"']",
+        r"([^\s:]+\.py)\s+has\s+\d+\s+tests;",
+        r"([^\s:]+\.md)\s+missing required concept",
+    )
+
+    for pattern in direct_patterns:
+        for match in re.finditer(
+            pattern,
+            evidence,
+            flags=re.IGNORECASE,
+        ):
+            candidate = normalize_candidate(
+                match.group(1)
+            )
+
+            if candidate is not None:
+                return candidate
+
+    lower = evidence.lower()
+
+    # Task-owned implementation API failures outrank test ownership.
     for module_name, symbols in spec.get(
         "python_symbols",
         {},
     ).items():
         module_path = (
             "src/"
-            + module_name.replace(".", "/")
+            + module_name.replace(
+                ".",
+                "/",
+            )
             + ".py"
         )
 
@@ -228,24 +257,87 @@ def failure_target_from_evidence(
             f"{module_name} missing symbol",
         )
 
-        if any(marker in evidence for marker in markers):
+        if any(
+            marker in evidence
+            for marker in markers
+        ):
             return module_path
 
-        lower = evidence.lower()
+        module_named_in_exception = bool(
+            re.search(
+                r"(?:ImportError|AttributeError|ModuleNotFoundError):[^\n]*"
+                + re.escape(module_name),
+                evidence,
+                flags=re.IGNORECASE,
+            )
+        )
 
         for symbol in symbols:
             if (
                 str(symbol) in evidence
                 and (
-                    "missing" in lower
-                    or "importerror" in lower
-                    or "attributeerror" in lower
+                    module_named_in_exception
+                    or "missing symbol" in lower
                 )
             ):
                 return module_path
 
-    return None
+    # unittest collection/import failures identify the contracted test file
+    # even when compact evidence omitted its filesystem traceback frame.
+    test_file = spec.get(
+        "test_file"
+    )
 
+    if (
+        isinstance(test_file, str)
+        and test_file in allowed
+    ):
+        test_module = pathlib.Path(
+            test_file
+        ).stem
+        test_name = pathlib.Path(
+            test_file
+        ).name
+
+        test_patterns = (
+            r"(?:ERROR|FAIL):[^\n]*\b"
+            + re.escape(test_module)
+            + r"\b",
+            r"_FailedTest\."
+            + re.escape(test_module)
+            + r"\b",
+            r"Failed to import test module:\s*"
+            + re.escape(test_module)
+            + r"\b",
+            r"ERROR collecting[^\n]*"
+            + re.escape(test_name),
+        )
+
+        if any(
+            re.search(
+                pattern,
+                evidence,
+                flags=re.IGNORECASE,
+            )
+            for pattern in test_patterns
+        ):
+            return test_file
+
+    # Missing artifacts are normal staged progression. Consider them only
+    # after active deterministic failures have been resolved.
+    for match in re.finditer(
+        r"missing required artifact:\s*([^\s]+)",
+        evidence,
+        flags=re.IGNORECASE,
+    ):
+        candidate = normalize_candidate(
+            match.group(1)
+        )
+
+        if candidate is not None:
+            return candidate
+
+    return None
 
 def next_task_target(
     task_id: str,
@@ -1182,6 +1274,7 @@ def _is_failure_line(line: str) -> bool:
         "traceback (most recent call last)",
         "no such file or directory",
         "rejected by",
+        "failed to import test module",
     )
 
     if any(marker in lowered for marker in phrase_markers):
@@ -1203,6 +1296,21 @@ def _is_failure_line(line: str) -> bool:
         return True
 
     if re.search(
+        r"^\s*File\s+[\"'][^\"']+\.py[\"'],\s+line\s+\d+",
+        line,
+    ):
+        return True
+
+    if (
+        str(ROOT) in line
+        and (
+            ".py" in line
+            or ".md" in line
+        )
+    ):
+        return True
+
+    if re.search(
         r"(^|[\s:])(?:ERROR|FAIL|FAILED)(?:[\s:/(]|$)",
         line,
     ):
@@ -1212,7 +1320,6 @@ def _is_failure_line(line: str) -> bool:
         return True
 
     return False
-
 
 def compact_gate_output(
     output: str,
