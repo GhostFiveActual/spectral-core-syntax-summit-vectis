@@ -522,10 +522,66 @@ def parse_specialist_transport(
         suffix in code_suffixes
         and "```" in content
     ):
-        raise ValueError(
-            "Source artifact contains a Markdown wrapper fence. "
-            "Return only the file body."
+        # Accept only one outer Markdown wrapper around the entire source
+        # response. The controller already owns the target path, so the
+        # wrapper itself carries no trusted metadata.
+        stripped = content.strip()
+        lines = stripped.splitlines()
+
+        if len(lines) < 3:
+            raise ValueError(
+                "Source artifact contains incomplete Markdown fencing."
+            )
+
+        opening = lines[0].strip()
+        closing = lines[-1].strip()
+
+        if (
+            not opening.startswith("```")
+            or closing != "```"
+        ):
+            raise ValueError(
+                "Source artifact contains Markdown fencing or commentary "
+                "outside one clean outer wrapper."
+            )
+
+        language = opening[3:]
+
+        if (
+            language
+            and not all(
+                character.isalnum()
+                or character in "_.+-"
+                for character in language
+            )
+        ):
+            raise ValueError(
+                "Source artifact wrapper has an invalid language label."
+            )
+
+        body_lines = lines[1:-1]
+
+        if any(
+            "```" in line
+            for line in body_lines
+        ):
+            raise ValueError(
+                "Source artifact contains embedded or multiple "
+                "Markdown fences."
+            )
+
+        body = "\n".join(
+            body_lines
+        ).strip(
+            "\r\n"
         )
+
+        if not body.strip():
+            raise ValueError(
+                "Source artifact wrapper contains an empty body."
+            )
+
+        content = body
 
     if suffix == ".py":
         try:
