@@ -251,7 +251,8 @@ def next_task_target(
     task_id: str,
     state: dict[str, Any],
 ) -> str:
-    # Choose one artifact using explicit failure evidence, then manifest order.
+    # Prefer manifest dependency order when an earlier required artifact
+    # is missing. Otherwise use explicit deterministic failure evidence.
     allowed = TASK_FILE_RULES.get(task_id)
 
     if not allowed:
@@ -262,6 +263,15 @@ def next_task_target(
         )
 
     spec = TASK_SPECS.get(task_id, {})
+    required = [
+        relative
+        for relative in spec.get(
+            "required_files",
+            [],
+        )
+        if relative in allowed
+    ]
+
     evidence = (
         str(state.get("last_quality_output", ""))
         + "\n"
@@ -273,27 +283,44 @@ def next_task_target(
         evidence,
     )
 
-    if failure_target is not None:
-        return failure_target
+    missing = []
 
-    for relative in spec.get(
-        "required_files",
-        [],
-    ):
-        if relative not in allowed:
-            continue
-
+    for relative in required:
         target = ROOT / relative
 
         if (
             not target.is_file()
             or target.stat().st_size == 0
         ):
-            return relative
+            missing.append(relative)
+
+    if missing:
+        first_missing = missing[0]
+
+        if failure_target is None:
+            return first_missing
+
+        if failure_target not in required:
+            return first_missing
+
+        if (
+            required.index(first_missing)
+            <= required.index(failure_target)
+        ):
+            return first_missing
+
+    if failure_target is not None:
+        return failure_target
+
+    if missing:
+        return missing[0]
 
     test_file = spec.get("test_file")
 
-    if isinstance(test_file, str) and test_file in allowed:
+    if (
+        isinstance(test_file, str)
+        and test_file in allowed
+    ):
         return test_file
 
     return sorted(allowed)[0]
@@ -1815,6 +1842,67 @@ def apply_change(
         )
 
 
+
+def snapshot_proposal_files(
+    proposal: dict[str, Any],
+) -> dict[str, bytes | None]:
+    snapshot: dict[str, bytes | None] = {}
+
+    for file in proposal["files"]:
+        relative = validate_path(
+            file["path"]
+        ).as_posix()
+
+        target = ROOT / relative
+
+        snapshot[relative] = (
+            target.read_bytes()
+            if target.is_file()
+            else None
+        )
+
+    return snapshot
+
+
+def restore_proposal_snapshot(
+    snapshot: dict[str, bytes | None],
+) -> None:
+    for relative, content in snapshot.items():
+        target = ROOT / validate_path(
+            relative
+        )
+
+        if content is None:
+            if target.exists():
+                if not target.is_file():
+                    raise RuntimeError(
+                        "Refusing to remove non-file proposal target: "
+                        + relative
+                    )
+
+                target.unlink()
+
+            continue
+
+        target.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        target.write_bytes(
+            content
+        )
+
+
+def task_gate_reports_incomplete(
+    output: str,
+) -> bool:
+    return (
+        "missing required artifact:"
+        in output.lower()
+    )
+
+
 def quality_gate() -> tuple[bool, str]:
     result = run(
         [
@@ -2246,6 +2334,8 @@ def main() -> int:
             f"{reviewer['name']}"
         )
 
+        proposal_snapshot: dict[str, bytes | None] | None = None
+
         try:
             proposal = generate_parsed(
                 model,
@@ -2275,6 +2365,10 @@ def main() -> int:
                 proposal,
             )
 
+            proposal_snapshot = snapshot_proposal_files(
+                proposal
+            )
+
             apply_change(
                 proposal
             )
@@ -2288,6 +2382,12 @@ def main() -> int:
             ] = compact_gate_output(quality_output)
 
             if not passed:
+                if proposal_snapshot is not None:
+                    restore_proposal_snapshot(
+                        proposal_snapshot
+                    )
+                    proposal_snapshot = None
+
                 state["repair_failures"] = (
                     int(
                         state.get(
@@ -2320,8 +2420,6 @@ def main() -> int:
                     state["repair_failures"]
                     >= MAX_REPAIR_FAILURES
                 ):
-                    reset_to_head()
-
                     state[
                         "repair_failures"
                     ] = 0
@@ -2373,7 +2471,46 @@ def main() -> int:
                 task["id"]
             )
 
+            if (
+                not task_passed
+                and task_gate_reports_incomplete(
+                    task_output
+                )
+            ):
+                state["repair_failures"] = 0
+                state["last_quality_output"] = (
+                    compact_gate_output(
+                        task_output
+                    )
+                )
+                state["last_feedback"] = (
+                    "The current staged artifact passed the global "
+                    "quality gate. The task is incomplete because a "
+                    "required artifact is still missing. Preserve all "
+                    "globally-green task WIP and create only the next "
+                    "missing required artifact in manifest order."
+                )
+
+                save_state(
+                    state
+                )
+
+                log(
+                    f"{task['id']} staged artifact accepted; "
+                    "continuing to next required artifact."
+                )
+
+                proposal_snapshot = None
+
+                time.sleep(
+                    LOOP_DELAY
+                )
+
+                continue
+
             if not task_passed:
+                proposal_snapshot = None
+
                 state["repair_failures"] = (
                     int(
                         state.get(
@@ -2411,8 +2548,6 @@ def main() -> int:
                     state["repair_failures"]
                     >= MAX_REPAIR_FAILURES
                 ):
-                    reset_to_head()
-
                     diagnostic = (
                         compact_gate_output(task_output)
                     )
@@ -2447,6 +2582,8 @@ def main() -> int:
                 )
 
                 continue
+
+            proposal_snapshot = None
 
             review_evidence = (
                 quality_output
@@ -2502,8 +2639,6 @@ def main() -> int:
                     state["repair_failures"]
                     >= MAX_REPAIR_FAILURES
                 ):
-                    reset_to_head()
-
                     state[
                         "repair_failures"
                     ] = 0
@@ -2531,6 +2666,8 @@ def main() -> int:
                     "commit_message"
                 ]
             )
+
+            proposal_snapshot = None
 
             log(
                 f"{task['id']} implementation approved "
@@ -2564,6 +2701,12 @@ def main() -> int:
             )
 
         except Exception as exc:
+            if proposal_snapshot is not None:
+                restore_proposal_snapshot(
+                    proposal_snapshot
+                )
+                proposal_snapshot = None
+
             state = load_state()
 
             state["repair_failures"] = (
@@ -2599,8 +2742,6 @@ def main() -> int:
                 state["repair_failures"]
                 >= MAX_REPAIR_FAILURES
             ):
-                reset_to_head()
-
                 state[
                     "repair_failures"
                 ] = 0
@@ -2616,7 +2757,7 @@ def main() -> int:
 
                 log(
                     f"{task['id']} failure threshold reached; "
-                    "reset to last green commit."
+                    "preserved staged task WIP."
                 )
 
             save_state(
