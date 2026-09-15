@@ -447,6 +447,270 @@ def next_task_target(
 
     return sorted(allowed)[0]
 
+
+def deterministic_repair_hints(
+    target: str,
+    evidence: str,
+) -> str:
+    """Derive repair hints from actual repository symbol ownership."""
+    import ast
+    import re
+
+    target_path = validate_path(
+        target
+    )
+
+    if target_path.suffix != ".py":
+        return "(none)"
+
+    src_root = (
+        ROOT
+        / "src"
+    )
+
+    providers: dict[
+        str,
+        list[str],
+    ] = {}
+
+    # Build symbol -> module ownership from the actual VECTIS source tree.
+    for source_path in sorted(
+        (
+            src_root
+            / "vectis"
+        ).glob(
+            "*.py"
+        )
+    ):
+        try:
+            source = source_path.read_text(
+                encoding="utf-8"
+            )
+
+            tree = ast.parse(
+                source,
+                filename=str(
+                    source_path
+                ),
+            )
+        except (
+            OSError,
+            SyntaxError,
+        ):
+            continue
+
+        relative = (
+            source_path
+            .relative_to(
+                src_root
+            )
+            .with_suffix("")
+        )
+
+        parts = list(
+            relative.parts
+        )
+
+        if (
+            parts
+            and parts[-1] == "__init__"
+        ):
+            parts = parts[:-1]
+
+        module_name = ".".join(
+            parts
+        )
+
+        if not module_name:
+            continue
+
+        for node in tree.body:
+            if isinstance(
+                node,
+                (
+                    ast.ClassDef,
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                ),
+            ):
+                providers.setdefault(
+                    node.name,
+                    [],
+                ).append(
+                    module_name
+                )
+
+    requested: set[str] = set()
+
+    # Direct deterministic runtime evidence.
+    for match in re.finditer(
+        r"NameError:\s+name\s+['\"]"
+        r"([A-Za-z_][A-Za-z0-9_]*)"
+        r"['\"]\s+is\s+not\s+defined",
+        evidence,
+    ):
+        requested.add(
+            match.group(1)
+        )
+
+    for match in re.finditer(
+        r"ImportError:\s+cannot\s+import\s+name\s+['\"]"
+        r"([A-Za-z_][A-Za-z0-9_]*)"
+        r"['\"]",
+        evidence,
+    ):
+        requested.add(
+            match.group(1)
+        )
+
+    # Also inspect the current target for repository-owned names that are
+    # referenced but not currently bound. This allows one repair turn to
+    # anticipate the next obvious missing import rather than waiting for
+    # another NameError.
+    try:
+        target_source = target_path.read_text(
+            encoding="utf-8"
+        )
+
+        target_tree = ast.parse(
+            target_source,
+            filename=str(
+                target_path
+            ),
+        )
+    except (
+        OSError,
+        SyntaxError,
+    ):
+        target_tree = None
+
+    if target_tree is not None:
+        bound: set[str] = set()
+        loaded: set[str] = set()
+
+        for node in ast.walk(
+            target_tree
+        ):
+            if isinstance(
+                node,
+                ast.Import,
+            ):
+                for alias in node.names:
+                    bound.add(
+                        alias.asname
+                        or alias.name.split(
+                            ".",
+                            1,
+                        )[0]
+                    )
+
+            elif isinstance(
+                node,
+                ast.ImportFrom,
+            ):
+                for alias in node.names:
+                    bound.add(
+                        alias.asname
+                        or alias.name
+                    )
+
+            elif isinstance(
+                node,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                    ast.ClassDef,
+                ),
+            ):
+                bound.add(
+                    node.name
+                )
+
+            elif isinstance(
+                node,
+                ast.arg,
+            ):
+                bound.add(
+                    node.arg
+                )
+
+            elif isinstance(
+                node,
+                ast.Name,
+            ):
+                if isinstance(
+                    node.ctx,
+                    ast.Store,
+                ):
+                    bound.add(
+                        node.id
+                    )
+
+                elif isinstance(
+                    node.ctx,
+                    ast.Load,
+                ):
+                    loaded.add(
+                        node.id
+                    )
+
+        for name in (
+            loaded
+            - bound
+        ):
+            if name in providers:
+                requested.add(
+                    name
+                )
+
+    hints = []
+
+    for name in sorted(
+        requested
+    ):
+        modules = sorted(
+            set(
+                providers.get(
+                    name,
+                    [],
+                )
+            )
+        )
+
+        if len(modules) == 1:
+            module_name = modules[0]
+
+            hints.append(
+                "- "
+                + name
+                + " has one repository provider: "
+                + module_name
+                + ". Deterministic import candidate: "
+                + "from "
+                + module_name
+                + " import "
+                + name
+            )
+
+        elif len(modules) > 1:
+            hints.append(
+                "- "
+                + name
+                + " has multiple repository providers: "
+                + ", ".join(
+                    modules
+                )
+                + ". Inspect authoritative APIs before choosing."
+            )
+
+    if not hints:
+        return "(none)"
+
+    return "\n".join(
+        hints
+    )
+
+
 def specialist_transport_prompt(
     task: dict[str, Any],
     role: dict[str, Any],
@@ -504,6 +768,14 @@ def specialist_transport_prompt(
     if len(authority) > 12_000:
         authority = authority[-12_000:]
 
+    repair_hints = deterministic_repair_hints(
+        target,
+        quality,
+    )
+
+    if len(repair_hints) > 6_000:
+        repair_hints = repair_hints[-6_000:]
+
     if target_path.exists():
         current_body = target_path.read_text(
             encoding="utf-8",
@@ -538,14 +810,20 @@ def specialist_transport_prompt(
             + "AUTHORITATIVE DEPENDENCY CONTEXT:\n"
             + authority
             + "\n\n"
+            + "DETERMINISTIC REPAIR HINTS:\n"
+            + repair_hints
+            + "\n\n"
             + "CURRENT TARGET FILE CONTENTS:\n"
             + "<<<CURRENT_TARGET_BODY>>>\n"
             + current_body
             + "\n<<<END_CURRENT_TARGET_BODY>>>\n\n"
             + "REPAIR DIRECTIVE:\n"
             + "Repair the smallest root cause demonstrated by the "
-              "deterministic evidence. The checked-in/current source APIs "
-              "and authoritative dependency context outrank assumptions. "
+              "deterministic evidence. The checked-in/current source APIs, "
+              "authoritative dependency context, and repository-derived "
+              "repair hints outrank assumptions. When a repair hint identifies "
+              "a unique provider for an unresolved symbol, apply that import "
+              "unless the current source proves another resolution is correct. "
               "Do not preserve an import, symbol, constructor, or call shape "
               "that the evidence proves is invalid. Do not rewrite unrelated "
               "completed-task behavior. Your returned file MUST differ from "
