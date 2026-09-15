@@ -161,11 +161,97 @@ VECTIS_CONTENT_BEGIN = "<<<VECTIS_CONTENT_7F4A2B>>>"
 VECTIS_CONTENT_END = "<<<VECTIS_END_7F4A2B>>>"
 
 
+def failure_target_from_evidence(
+    task_id: str,
+    evidence: str,
+) -> str | None:
+    # Resolve only artifacts explicitly implicated by deterministic errors.
+    import re
+
+    allowed = TASK_FILE_RULES.get(task_id, set())
+    spec = TASK_SPECS.get(task_id, {})
+
+    explicit_patterns = (
+        r"missing required artifact:\s*([^\s]+)",
+        r"Error compiling ['\"]([^'\"]+)['\"]",
+        r"File ['\"]([^'\"]+\.py)['\"]",
+        r"([^\s:]+\.py)\s+has\s+\d+\s+tests;",
+        r"([^\s:]+\.md)\s+missing required concept",
+    )
+
+    for pattern in explicit_patterns:
+        match = re.search(
+            pattern,
+            evidence,
+            flags=re.IGNORECASE,
+        )
+
+        if not match:
+            continue
+
+        raw = match.group(1)
+
+        try:
+            candidate_path = pathlib.Path(raw)
+
+            if candidate_path.is_absolute():
+                candidate = (
+                    candidate_path
+                    .resolve()
+                    .relative_to(ROOT.resolve())
+                    .as_posix()
+                )
+            else:
+                candidate = candidate_path.as_posix()
+        except (OSError, ValueError):
+            continue
+
+        if candidate in allowed:
+            return candidate
+
+    for module_name, symbols in spec.get(
+        "python_symbols",
+        {},
+    ).items():
+        module_path = (
+            "src/"
+            + module_name.replace(".", "/")
+            + ".py"
+        )
+
+        if module_path not in allowed:
+            continue
+
+        markers = (
+            f"- {module_name}:",
+            f"import: {module_name} FAIL",
+            f"{module_name} missing symbol",
+        )
+
+        if any(marker in evidence for marker in markers):
+            return module_path
+
+        lower = evidence.lower()
+
+        for symbol in symbols:
+            if (
+                str(symbol) in evidence
+                and (
+                    "missing" in lower
+                    or "importerror" in lower
+                    or "attributeerror" in lower
+                )
+            ):
+                return module_path
+
+    return None
+
+
 def next_task_target(
     task_id: str,
     state: dict[str, Any],
 ) -> str:
-    # Choose exactly one task-owned artifact for the next model turn.
+    # Choose one artifact using explicit failure evidence, then manifest order.
     allowed = TASK_FILE_RULES.get(task_id)
 
     if not allowed:
@@ -182,43 +268,14 @@ def next_task_target(
         + str(state.get("last_feedback", ""))
     )
 
-    # First repair the exact artifact named by deterministic evidence.
-    for relative in sorted(
-        allowed,
-        key=lambda item: (
-            evidence.find(item)
-            if item in evidence
-            else 10**9,
-            item,
-        ),
-    ):
-        if relative in evidence:
-            return relative
+    failure_target = failure_target_from_evidence(
+        task_id,
+        evidence,
+    )
 
-    # Map public API failures back to their owning implementation file.
-    for module_name, symbols in spec.get(
-        "python_symbols",
-        {},
-    ).items():
-        module_path = (
-            "src/"
-            + module_name.replace(".", "/")
-            + ".py"
-        )
+    if failure_target is not None:
+        return failure_target
 
-        if module_path not in allowed:
-            continue
-
-        if (
-            module_name in evidence
-            or any(
-                str(symbol) in evidence
-                for symbol in symbols
-            )
-        ):
-            return module_path
-
-    # Build missing required artifacts in manifest order.
     for relative in spec.get(
         "required_files",
         [],
@@ -234,17 +291,12 @@ def next_task_target(
         ):
             return relative
 
-    # Once required artifacts exist, prefer the task test surface.
     test_file = spec.get("test_file")
 
-    if (
-        isinstance(test_file, str)
-        and test_file in allowed
-    ):
+    if isinstance(test_file, str) and test_file in allowed:
         return test_file
 
     return sorted(allowed)[0]
-
 
 def specialist_transport_prompt(
     task: dict[str, Any],
@@ -400,6 +452,40 @@ def parse_specialist_transport(
         )
 
     content = content.rstrip("\r\n") + "\n"
+
+    suffix = pathlib.Path(path_value).suffix.lower()
+
+    if suffix in {
+        ".py",
+        ".js",
+        ".html",
+        ".css",
+        ".vectis",
+    } and "```" in content:
+        raise ValueError(
+            "Raw code artifact contains a Markdown code fence. "
+            "Return only the file contents."
+        )
+
+    if suffix == ".py":
+        try:
+            compile(
+                content,
+                path_value,
+                "exec",
+            )
+        except SyntaxError as exc:
+            line = (
+                str(exc.lineno)
+                if exc.lineno is not None
+                else "unknown"
+            )
+            raise ValueError(
+                "Generated Python syntax is invalid at line "
+                + line
+                + ": "
+                + str(exc.msg)
+            ) from exc
 
     if len(
         content.encode("utf-8")
