@@ -160,7 +160,7 @@
       "role": "architect",
       "reviewer": "runtime_engineer",
       "title": "Design execution graph IR",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Typed graph nodes",
         "Dependency edges",
