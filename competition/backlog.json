@@ -143,7 +143,7 @@
       "role": "compiler_engineer",
       "reviewer": "architect",
       "title": "Implement semantic analyzer",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Validates references",
         "Validates value categories or types",
@@ -151,7 +151,9 @@
         "Rejects invalid semantics",
         "Produces deterministic diagnostics",
         "Comprehensive tests"
-      ]
+      ],
+      "completed_at": "2026-09-15T16:35:43.213699+00:00",
+      "implementation_commit": "65a40bfbb0c38e5864d56ae9f5b493c41e5499b7"
     },
     {
       "id": "IR-001",
