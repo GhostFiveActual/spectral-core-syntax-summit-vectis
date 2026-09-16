@@ -174,7 +174,7 @@
       "role": "compiler_engineer",
       "reviewer": "runtime_engineer",
       "title": "Compile AST to execution graph",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Deterministic graph generation",
         "Dependencies preserved",
