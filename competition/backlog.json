@@ -187,7 +187,7 @@
       "role": "runtime_engineer",
       "reviewer": "qa_redteam",
       "title": "Implement capability model",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Explicit capability declarations",
         "Unavailable capabilities denied",
