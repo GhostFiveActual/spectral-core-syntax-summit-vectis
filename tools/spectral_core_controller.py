@@ -1035,7 +1035,10 @@ def specialist_transport_prompt(
         + "OUTPUT CONTRACT:\n"
         + "Return ONLY the complete contents of the TARGET FILE. Do not "
           "return JSON, a path, a commit message, commentary, or another "
-          "artifact."
+          "artifact. Keep the complete response below 12000 UTF-8 bytes. "
+          "For source files, finish with syntactically complete source and "
+          "close every delimiter. Prefer the smallest implementation that "
+          "satisfies the stated acceptance criteria."
     )
 
 def parse_specialist_transport(
@@ -1484,7 +1487,7 @@ def generate(
         "options": {
             "temperature": 0.10,
             "num_ctx": 16384,
-            "num_predict": 4096,
+            "num_predict": 6144 if not json_mode else 4096,
         },
     }
 
@@ -1542,6 +1545,7 @@ def generate_parsed(
     last_error = None
     working_prompt = prompt
     unchanged_rejections = 0
+    transport_rejections = 0
 
     for attempt in range(
         1,
@@ -1549,7 +1553,10 @@ def generate_parsed(
     ):
         use_fallback = (
             not json_mode
-            and unchanged_rejections >= 2
+            and (
+                unchanged_rejections >= 2
+                or transport_rejections >= 2
+            )
         )
 
         active_model = (
@@ -1565,14 +1572,15 @@ def generate_parsed(
                 prompt
                 + "\n\n"
                 + "ESCALATION MODE:\n"
-                + "The primary coding model repeatedly returned the "
-                  "current target unchanged despite deterministic failure "
-                  "evidence. You are the fallback repair model. Make a real, "
-                  "minimal correction to the current target. Do not copy the "
-                  "broken file unchanged. Follow canonical repository APIs, "
-                  "runtime signatures, deterministic repair hints, and the "
-                  "deepest current failure. Return only the complete target "
-                  "file contents.\n\n"
+                + "The primary coding model repeatedly failed deterministic "
+                  "raw transport validation. You are the fallback repair model. "
+                  "Return one compact, complete target file that satisfies the "
+                  "original task and transport contracts. If the target is "
+                  "missing, create it; if it exists, make only the necessary "
+                  "repair. Follow canonical repository APIs, runtime signatures, "
+                  "deterministic repair hints, and the deepest current failure. "
+                  "For source files, ensure syntax is complete before the response "
+                  "ends. Stay below the direct-body size limit.\n\n"
                 + "LATEST REJECTION:\n"
                 + (
                     last_error
@@ -1597,6 +1605,9 @@ def generate_parsed(
                 + ": "
                 + str(exc)
             )
+
+            if not json_mode:
+                transport_rejections += 1
 
             if (
                 not json_mode
