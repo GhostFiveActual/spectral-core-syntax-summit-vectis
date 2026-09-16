@@ -33,7 +33,15 @@ from vectis.source_span import SourceSpan
 
 
 class SemanticError(DiagnosticError):
-    pass
+    """Compatibility wrapper for semantic diagnostics."""
+
+    def __init__(self, message: str, *, span: SourceSpan) -> None:
+        diagnostic = error_diagnostic(
+            code=DiagnosticCode.LEX_UNRECOGNIZED_CHARACTER,
+            message=message,
+            span=span,
+        )
+        super().__init__(diagnostic)
 
 
 class SemanticAnalyzer:
