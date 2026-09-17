@@ -1,0 +1,5 @@
+"""Explicit capability adapters for VECTIS.
+
+Concrete adapters live in dedicated submodules. Importing this package performs
+no filesystem, process, network, test, or other external operation.
+"""
