@@ -1631,6 +1631,58 @@ def save_state(
     )
 
 
+def block_controller(
+    state: dict[str, Any],
+    task_id: str,
+    reason: str,
+) -> None:
+    """Persist a fail-closed autonomy block after repeated failures."""
+    evidence = str(
+        state.get(
+            "last_quality_output",
+            "",
+        )
+        or state.get(
+            "last_feedback",
+            "",
+        )
+        or ""
+    )
+
+    if len(evidence) > 12_000:
+        evidence = evidence[-12_000:]
+
+    state["blocked"] = True
+    state["blocked_task"] = task_id
+    state["blocked_reason"] = reason
+    state["blocked_at"] = now()
+    state["repair_failures"] = MAX_REPAIR_FAILURES
+
+    state["last_feedback"] = (
+        "AUTONOMY BLOCKED after repeated deterministic failures. "
+        "The controller will not resume this backlog until the "
+        "persistent blocked state is explicitly cleared after repair. "
+        "Task: "
+        + task_id
+        + ". Reason: "
+        + reason
+        + ".\n\nLAST FAILURE EVIDENCE:\n"
+        + evidence
+    )
+
+    save_state(
+        state
+    )
+
+    log(
+        "AUTONOMY BLOCKED // "
+        + task_id
+        + " // "
+        + reason
+    )
+
+
+
 def ollama_models() -> list[str]:
     request = urllib.request.Request(
         f"{OLLAMA_URL}/api/tags"
@@ -3201,6 +3253,42 @@ def main() -> int:
         "Spectral Core multi-role controller starting."
     )
 
+    startup_state = load_state()
+
+    if startup_state.get(
+        "blocked",
+        False,
+    ):
+        blocked_task = str(
+            startup_state.get(
+                "blocked_task",
+                "",
+            )
+            or startup_state.get(
+                "current_task",
+                "",
+            )
+            or "unknown"
+        )
+
+        blocked_reason = str(
+            startup_state.get(
+                "blocked_reason",
+                "",
+            )
+            or "persistent autonomy block"
+        )
+
+        log(
+            "AUTONOMY BLOCKED AT STARTUP // "
+            + blocked_task
+            + " // "
+            + blocked_reason
+        )
+
+        return 0
+
+
     model = choose_model()
 
     log(
@@ -3515,6 +3603,14 @@ def main() -> int:
                         "returned to last green commit."
                     )
 
+                    block_controller(
+                        state,
+                        task["id"],
+                        "repair failure threshold reached",
+                    )
+
+                    return 0
+
                 time.sleep(
                     LOOP_DELAY
                 )
@@ -3631,6 +3727,14 @@ def main() -> int:
                         "reached; returned to last green commit."
                     )
 
+                    block_controller(
+                        state,
+                        task["id"],
+                        "repair failure threshold reached",
+                    )
+
+                    return 0
+
                 time.sleep(
                     LOOP_DELAY
                 )
@@ -3708,6 +3812,14 @@ def main() -> int:
                     save_state(
                         state
                     )
+
+                    block_controller(
+                        state,
+                        task["id"],
+                        "repair failure threshold reached",
+                    )
+
+                    return 0
 
                 time.sleep(
                     LOOP_DELAY
@@ -3813,6 +3925,14 @@ def main() -> int:
                     f"{task['id']} failure threshold reached; "
                     "preserved staged task WIP."
                 )
+
+                block_controller(
+                    state,
+                    task["id"],
+                    "repair failure threshold reached",
+                )
+
+                return 0
 
             save_state(
                 state
