@@ -256,7 +256,7 @@
       "role": "compiler_engineer",
       "reviewer": "ux_accessibility",
       "title": "Build CLI toolchain",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "vectis check",
         "vectis parse",
