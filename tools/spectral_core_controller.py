@@ -373,11 +373,11 @@ def _quality_evidence_retarget(
     task_id: str,
     state: dict[str, Any],
 ) -> str | None:
-    """Retarget deterministic API/import failures to task implementation.
+    """Retarget deterministic failures to an implicated task-owned file.
 
-    The override is intentionally narrow. It is used only when current
-    quality evidence contains a Python import/API failure and identifies
-    exactly one Python implementation file declared by the active task.
+    Normal manifest progression remains authoritative unless deterministic
+    quality evidence names exactly one required file owned by the current
+    task and reports a repairable syntax, parser, import, or API failure.
     """
     quality_evidence = str(
         state.get(
@@ -403,7 +403,12 @@ def _quality_evidence_retarget(
 
     lowered = evidence.lower()
 
-    markers = (
+    repair_markers = (
+        "lexererror",
+        "parsererror",
+        "syntaxerror",
+        "unrecognized character",
+        "unterminated string",
         "importerror",
         "cannot import name",
         "attributeerror",
@@ -413,7 +418,7 @@ def _quality_evidence_retarget(
 
     if not any(
         marker in lowered
-        for marker in markers
+        for marker in repair_markers
     ):
         return None
 
@@ -422,36 +427,41 @@ def _quality_evidence_retarget(
         {},
     )
 
-    candidates = [
+    required_files = [
         str(relative)
         for relative in spec.get(
             "required_files",
             [],
         )
-        if str(relative).startswith("src/")
-        and str(relative).endswith(".py")
     ]
 
     implicated: list[str] = []
 
-    for relative in candidates:
-        module_name = (
-            relative[
-                len("src/"):-len(".py")
-            ]
-            .replace(
-                "/",
-                ".",
-            )
-        )
-
-        if (
-            relative in evidence
-            or module_name in evidence
-        ):
+    for relative in required_files:
+        if relative in evidence:
             implicated.append(
                 relative
             )
+            continue
+
+        if (
+            relative.startswith("src/")
+            and relative.endswith(".py")
+        ):
+            module_name = (
+                relative[
+                    len("src/"):-len(".py")
+                ]
+                .replace(
+                    "/",
+                    ".",
+                )
+            )
+
+            if module_name in evidence:
+                implicated.append(
+                    relative
+                )
 
     implicated = list(
         dict.fromkeys(
@@ -463,6 +473,8 @@ def _quality_evidence_retarget(
         return implicated[0]
 
     return None
+
+
 
 
 def next_task_target(
