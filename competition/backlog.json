@@ -285,7 +285,7 @@
       "role": "qa_redteam",
       "reviewer": "compiler_engineer",
       "title": "Build language conformance suite",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Positive lexical fixtures",
         "Negative lexical fixtures",
