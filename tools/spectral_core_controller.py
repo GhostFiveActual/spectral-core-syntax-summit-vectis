@@ -369,12 +369,116 @@ def failure_target_from_evidence(
 
     return None
 
+def _quality_evidence_retarget(
+    task_id: str,
+    state: dict[str, Any],
+) -> str | None:
+    """Retarget deterministic API/import failures to task implementation.
+
+    The override is intentionally narrow. It is used only when current
+    quality evidence contains a Python import/API failure and identifies
+    exactly one Python implementation file declared by the active task.
+    """
+    quality_evidence = str(
+        state.get(
+            "last_quality_output",
+            "",
+        )
+        or ""
+    )
+
+    feedback = str(
+        state.get(
+            "last_feedback",
+            "",
+        )
+        or ""
+    )
+
+    evidence = (
+        quality_evidence
+        if quality_evidence.strip()
+        else feedback
+    )
+
+    lowered = evidence.lower()
+
+    markers = (
+        "importerror",
+        "cannot import name",
+        "attributeerror",
+        "has no attribute",
+        "nameerror",
+    )
+
+    if not any(
+        marker in lowered
+        for marker in markers
+    ):
+        return None
+
+    spec = TASK_SPECS.get(
+        task_id,
+        {},
+    )
+
+    candidates = [
+        str(relative)
+        for relative in spec.get(
+            "required_files",
+            [],
+        )
+        if str(relative).startswith("src/")
+        and str(relative).endswith(".py")
+    ]
+
+    implicated: list[str] = []
+
+    for relative in candidates:
+        module_name = (
+            relative[
+                len("src/"):-len(".py")
+            ]
+            .replace(
+                "/",
+                ".",
+            )
+        )
+
+        if (
+            relative in evidence
+            or module_name in evidence
+        ):
+            implicated.append(
+                relative
+            )
+
+    implicated = list(
+        dict.fromkeys(
+            implicated
+        )
+    )
+
+    if len(implicated) == 1:
+        return implicated[0]
+
+    return None
+
+
 def next_task_target(
     task_id: str,
     state: dict[str, Any],
 ) -> str:
     # Prefer manifest dependency order when an earlier required artifact
     # is missing. Otherwise use explicit deterministic failure evidence.
+    evidence_target = _quality_evidence_retarget(
+        task_id,
+        state,
+    )
+
+    if evidence_target is not None:
+        return evidence_target
+
     allowed = TASK_FILE_RULES.get(task_id)
 
     if not allowed:
