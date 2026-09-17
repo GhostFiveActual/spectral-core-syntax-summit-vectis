@@ -1,0 +1,5 @@
+mission "Capability workflow" {
+    require "filesystem";
+    request "network";
+    publish "capabilities checked";
+}
