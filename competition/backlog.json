@@ -271,7 +271,7 @@
       "role": "documentation_submission",
       "reviewer": "compiler_engineer",
       "title": "Create official example programs",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Research workflow",
         "Build and test workflow",
