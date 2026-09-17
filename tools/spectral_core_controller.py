@@ -1157,7 +1157,7 @@ def specialist_transport_prompt(
           "satisfies the stated acceptance criteria."
     )
 
-def parse_specialist_transport(
+def _parse_specialist_transport_unvalidated(
     text: str,
     target: str,
 ) -> dict[str, Any]:
@@ -1343,6 +1343,114 @@ def parse_specialist_transport(
             ).name
         ),
     }
+
+
+def _validate_generated_vectis_source(
+    path_value: str,
+    content: str,
+) -> None:
+    """Reject malformed generated VECTIS before it reaches the worktree."""
+    try:
+        from vectis.parser import parse as parse_vectis
+
+        parse_vectis(
+            content,
+            file=path_value,
+        )
+
+    except Exception as exc:
+        raise ValueError(
+            "Generated VECTIS source is invalid for "
+            + path_value
+            + ": "
+            + type(exc).__name__
+            + ": "
+            + str(exc)
+            + ". Use only the canonical syntax documented in "
+            "docs/spec/grammar.md and existing examples/valid/*.vectis. "
+            "Do not use YAML-style colons, JSON syntax, Markdown fences, "
+            "or historical block syntax."
+        ) from exc
+
+
+def parse_specialist_transport(
+    *args: Any,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Parse specialist output and validate generated VECTIS before write."""
+    proposal = _parse_specialist_transport_unvalidated(
+        *args,
+        **kwargs,
+    )
+
+    files = proposal.get(
+        "files",
+        [],
+    )
+
+    for entry in files:
+        path_value = str(
+            entry.get(
+                "path",
+                "",
+            )
+        )
+
+        if not path_value.endswith(
+            ".vectis"
+        ):
+            continue
+
+        content: str | None = None
+
+        for key in (
+            "content",
+            "body",
+            "text",
+            "contents",
+        ):
+            candidate = entry.get(
+                key
+            )
+
+            if isinstance(
+                candidate,
+                str,
+            ):
+                content = candidate
+                break
+
+            if isinstance(
+                candidate,
+                bytes,
+            ):
+                content = candidate.decode(
+                    "utf-8",
+                    errors="strict",
+                )
+                break
+
+        if content is None:
+            raise ValueError(
+                "Generated VECTIS transport for "
+                + path_value
+                + " does not contain text content. "
+                + "Available keys: "
+                + ", ".join(
+                    sorted(
+                        str(key)
+                        for key in entry
+                    )
+                )
+            )
+
+        _validate_generated_vectis_source(
+            path_value,
+            content,
+        )
+
+    return proposal
+
 
 def validate_specialist_target(
     task_id: str,
