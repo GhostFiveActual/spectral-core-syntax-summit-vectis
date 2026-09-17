@@ -215,7 +215,7 @@
       "role": "runtime_engineer",
       "reviewer": "qa_redteam",
       "title": "Implement filesystem adapter",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Explicit allowed roots",
         "Traversal protection",
