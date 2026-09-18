@@ -330,7 +330,7 @@
       "role": "ux_accessibility",
       "reviewer": "qa_redteam",
       "title": "Build local browser playground",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Editable VECTIS source",
         "Parse feedback",
