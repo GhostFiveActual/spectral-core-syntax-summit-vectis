@@ -363,7 +363,7 @@
       "role": "documentation_submission",
       "reviewer": "architect",
       "title": "Write technical architecture package",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "System architecture",
         "Compiler stages",
