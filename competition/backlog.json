@@ -347,7 +347,7 @@
       "role": "documentation_submission",
       "reviewer": "language_designer",
       "title": "Write complete language guide",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Installation",
         "Tutorial",
