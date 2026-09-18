@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vectis-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality / Python 3.14
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install package and build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+          python -m pip install -e .
+
+      - name: Repository quality gate
+        run: bash tools/quality-gate.sh
+
+      - name: Build wheel and source distribution
+        run: python -m build
+
+      - name: Isolated wheel smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python -m venv /tmp/vectis-wheel-smoke
+          /tmp/vectis-wheel-smoke/bin/python -m pip install --upgrade pip
+
+          WHEEL="$(find dist -maxdepth 1 -name 'vectis_lang-*.whl' -print -quit)"
+          test -n "$WHEEL"
+
+          /tmp/vectis-wheel-smoke/bin/python -m pip install "$WHEEL"
+
+          cat >/tmp/vectis-ci-smoke.vectis <<'VECTIS'
+          mission "CI package smoke test" {
+              source ready true;
+              source result "VECTIS package works";
+
+              when ready {
+                  publish result;
+              }
+          }
+          VECTIS
+
+          cd /tmp
+
+          /tmp/vectis-wheel-smoke/bin/vectis --version
+          /tmp/vectis-wheel-smoke/bin/vectis check /tmp/vectis-ci-smoke.vectis
+          /tmp/vectis-wheel-smoke/bin/vectis plan /tmp/vectis-ci-smoke.vectis
+          /tmp/vectis-wheel-smoke/bin/vectis run /tmp/vectis-ci-smoke.vectis \
+            | tee /tmp/vectis-ci-result.json
+
+          /tmp/vectis-wheel-smoke/bin/python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(
+              Path("/tmp/vectis-ci-result.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          states = dict(result["node_states"])
+
+          assert result["success"] is True
+          assert result["failures"] == []
+          assert states["condition:0001"] == "succeeded"
+          assert states["publish:0001"] == "succeeded"
+          PY

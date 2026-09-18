@@ -16,3 +16,11 @@ artifacts/runtime/*
 !artifacts/runtime/.gitkeep
 artifacts/qa/*
 !artifacts/qa/.gitkeep
+
+# Python / packaging artifacts
+venv/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.coverage
+htmlcov/
