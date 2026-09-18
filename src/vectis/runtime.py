@@ -304,6 +304,36 @@ class Runtime:
         )
 
         if not isinstance(condition_value, bool):
+            dependency_sources = [
+                edge.source
+                for edge in self.graph.edges
+                if (
+                    edge.target == node.id
+                    and edge.kind is EdgeKind.DEPENDENCY
+                )
+            ]
+
+            if len(dependency_sources) == 1:
+                dependency_source = dependency_sources[0]
+
+                dependency_node = next(
+                    (
+                        candidate
+                        for candidate in self.graph.nodes
+                        if candidate.id == dependency_source
+                    ),
+                    None,
+                )
+
+                if (
+                    dependency_node is not None
+                    and self._states.get(dependency_source)
+                    is NodeState.SUCCEEDED
+                    and isinstance(dependency_node.value, bool)
+                ):
+                    condition_value = dependency_node.value
+
+        if not isinstance(condition_value, bool):
             raise RuntimeExecutionError(
                 f"Condition node {node.id!r} "
                 "did not produce a boolean value"
