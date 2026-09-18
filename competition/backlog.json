@@ -394,7 +394,7 @@
       "role": "documentation_submission",
       "reviewer": "architect",
       "title": "Prepare Devpost submission draft",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Project description",
         "Problem statement",
