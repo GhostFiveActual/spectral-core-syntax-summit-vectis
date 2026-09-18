@@ -316,7 +316,7 @@
       "role": "ux_accessibility",
       "reviewer": "language_designer",
       "title": "Review language usability",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Syntax consistency review",
         "Diagnostic clarity review",
