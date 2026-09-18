@@ -411,7 +411,7 @@
       "role": "qa_redteam",
       "reviewer": "architect",
       "title": "Final release candidate review",
-      "status": "pending",
+      "status": "done",
       "acceptance": [
         "Complete test suite passes",
         "Official examples pass",
