@@ -1617,9 +1617,87 @@ def load_state() -> dict[str, Any]:
     )
 
 
+def _task_progress_fingerprint(task_id: str) -> str:
+    # Hash only task-owned required artifacts. This lets the repair
+    # counter reset after real artifact progress, but not merely because
+    # the controller switched between failure classes.
+    import hashlib
+
+    digest = hashlib.sha256()
+    digest.update(task_id.encode("utf-8"))
+
+    spec = TASK_SPECS.get(task_id, {})
+    required = sorted(
+        set(
+            spec.get("required_files", [])
+            or spec.get("files", [])
+            or []
+        )
+    )
+
+    for relative in required:
+        digest.update(b"\0PATH\0")
+        digest.update(str(relative).encode("utf-8"))
+
+        artifact = ROOT / str(relative)
+
+        if not artifact.is_file():
+            digest.update(b"\0MISSING\0")
+            continue
+
+        digest.update(b"\0FILE\0")
+        digest.update(artifact.read_bytes())
+
+    return digest.hexdigest()
+
+
+def _preserve_nonprogress_failure_count(state: dict[str, Any]) -> None:
+    # Make repair_failures task-wide while the task-owned artifact
+    # fingerprint remains unchanged.
+    task_id = state.get("current_task")
+
+    if not task_id:
+        state.pop("_repair_progress_task", None)
+        state.pop("_repair_progress_fingerprint", None)
+        state.pop("_repair_progress_failures", None)
+        return
+
+    fingerprint = _task_progress_fingerprint(str(task_id))
+
+    try:
+        requested = int(state.get("repair_failures", 0) or 0)
+    except (TypeError, ValueError):
+        requested = 0
+
+    previous_task = state.get("_repair_progress_task")
+    previous_fingerprint = state.get("_repair_progress_fingerprint")
+
+    try:
+        previous_count = int(
+            state.get("_repair_progress_failures", 0) or 0
+        )
+    except (TypeError, ValueError):
+        previous_count = 0
+
+    if (
+        previous_task == task_id
+        and previous_fingerprint == fingerprint
+    ):
+        effective = max(requested, previous_count)
+    else:
+        effective = requested
+
+    state["repair_failures"] = effective
+    state["_repair_progress_task"] = task_id
+    state["_repair_progress_fingerprint"] = fingerprint
+    state["_repair_progress_failures"] = effective
+
+
 def save_state(
     state: dict[str, Any],
 ) -> None:
+    _preserve_nonprogress_failure_count(state)
+
     RUNTIME.mkdir(
         parents=True,
         exist_ok=True,
@@ -3379,7 +3457,22 @@ def main() -> int:
                 + ": "
                 + str(exc)
             )
-            return 2
+
+            state = load_state()
+            state["current_task"] = task["id"]
+
+            block_controller(
+                state,
+                task["id"],
+                (
+                    "task contract validation failed: "
+                    + type(exc).__name__
+                    + ": "
+                    + str(exc)
+                ),
+            )
+
+            return 0
 
         state = load_state()
 
