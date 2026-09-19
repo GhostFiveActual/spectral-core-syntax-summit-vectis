@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Implements the bounded filesystem capability adapter used by VECTIS.
 """Controlled filesystem capability adapter for VECTIS."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Defines immutable VECTIS tokens with deterministic source spans.
 """Token primitives shared by VECTIS compiler stages."""
 
 from dataclasses import dataclass

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Defines explicit capability declarations, validation, and compatibility helpers.
 from __future__ import annotations
 
 from dataclasses import dataclass

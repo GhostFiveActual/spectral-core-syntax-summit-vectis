@@ -1,42 +1,49 @@
-# VECTIS Documentation
+<!-- ghost-five-brand:start -->
+<div align="center">
 
-The documentation tree is organized around the public VECTIS product.
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
+# VECTIS Documentation
 
 ## Start here
 
-- [Quickstart](quickstart.md) — install, validate, plan, run, and launch Studio.
-- [User guide](user-guide.md) — language workflow, values, functions, assertions, branches, capabilities, and CLI.
-- [Demo](demo.md) — canonical demonstration path.
-- [VECTIS Studio](studio.md) — local-first application architecture and operation.
-- [Product roadmap](../ROADMAP.md) — planned language, adapter, and Studio evolution.
+| Document | Purpose |
+| --- | --- |
+| [Quickstart](quickstart.md) | Install, create a project, validate, inspect, execute, and launch applications. |
+| [User guide](user-guide.md) | Complete current language and CLI workflow. |
+| [Demo](demo.md) | Scripted demo and Mission Readiness application. |
+| [VECTIS Studio](studio.md) | Local development workbench. |
+| [Roadmap](../ROADMAP.md) | Planned language and product work. |
+
+## Spectral Core standards
+
+The Spectral Core standard set lives under [docs/spectral-core](spectral-core/README.md). These documents capture the engineering, writing, language, release, and knowledge transfer rules that VECTIS established for the team.
 
 ## Language specification
 
-- [Grammar](spec/grammar.md) — normative concrete grammar.
-- [Lexical specification](spec/lexical-spec.md) — tokens, identifiers, operators, comments, strings, and numbers.
-- [Semantic model](spec/semantic-model.md) — declarations, references, built-ins, type rules, and graph eligibility.
+| Document | Purpose |
+| --- | --- |
+| [Grammar](spec/grammar.md) | Normative concrete syntax. |
+| [Lexical specification](spec/lexical-spec.md) | Tokens, identifiers, operators, comments, strings, and numbers. |
+| [Semantic model](spec/semantic-model.md) | Declarations, references, functions, type rules, and graph eligibility. |
 
 ## Architecture
 
-- [Overview](architecture/overview.md)
-- [Compiler pipeline](architecture/compiler-pipeline.md)
-- [Runtime](architecture/runtime.md)
-- [Security](architecture/security.md)
-- [Threat model](architecture/threat-model.md)
+The architecture directory documents the compiler pipeline, runtime, security boundary, and threat model.
 
 ## Engineering design
 
-`design/` contains deeper component contracts for the AST, parser, semantic analyzer, IR, runtime, diagnostics, CLI, capability model, and adapters.
+The design directory contains component contracts for the syntax tree, parser, semantic analyzer, execution graph, runtime, diagnostics, CLI, capabilities, and adapters.
 
 ## Quality
 
-`qa/` documents language conformance and security review. The executable source of truth is the automated test suite plus `tools/quality-gate.sh`.
+The qa directory documents language conformance and security review. The executable source of truth is the test suite plus `tools/quality-gate.sh`.
 
 ## Releases
 
-- [Current development release record](release/RELEASE.md)
-- [Changelog](release/CHANGELOG.md)
-- [Public-release checklist](release/PUBLIC_RELEASE_CHECKLIST.md)
-- [v0.0.1 engineering-baseline notes](release/history/v0.0.1.md)
-
-Internal autonomous-build records and original competition/submission artifacts are intentionally kept outside the public product repository.
+The release directory contains current release records, historical release notes, and the public release checklist.

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS cli contract.
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout

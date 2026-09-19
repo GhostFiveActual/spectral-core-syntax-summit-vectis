@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Package metadata, supported Python versions, and build configuration for VECTIS.
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -47,4 +49,4 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-vectis = ["studio_assets/*.html", "studio_assets/*.css", "studio_assets/*.js"]
+vectis = ["studio_assets/*.html", "studio_assets/*.css", "studio_assets/*.js", "demo_assets/*.html", "demo_assets/*.css", "demo_assets/*.js"]

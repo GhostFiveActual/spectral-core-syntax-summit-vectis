@@ -1,3 +1,5 @@
+// GHOST FIVE // SPECTRAL CORE // VECTIS
+// Negative language fixture: type mismatch.
 mission "Type mismatch" {
     confidence true;
 }

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Tokenizes VECTIS source into deterministic tokens with source locations.
 """Reference lexer for the VECTIS language."""
 
 from __future__ import annotations

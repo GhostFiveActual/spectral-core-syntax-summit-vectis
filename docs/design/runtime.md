@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # Runtime Design
 
 The runtime executes the typed `ExecutionGraph` produced by the compiler. Raw VECTIS source is never interpreted directly by the runtime.
@@ -8,11 +18,11 @@ The runtime executes the typed `ExecutionGraph` produced by the compiler. Raw VE
 
 A node can finish in one of the public runtime states:
 
-- `succeeded`,
-- `failed`,
-- `blocked`,
-- `skipped`,
-- `dry-run`.
+* `succeeded`,
+* `failed`,
+* `blocked`,
+* `skipped`,
+* `dry-run`.
 
 Failed dependencies block downstream work. Nodes on an inactive conditional branch are skipped.
 
@@ -50,11 +60,11 @@ Dry run schedules the graph and reports dry-run states without invoking effect h
 
 The public result includes:
 
-- `success`,
-- `dry_run`,
-- execution order,
-- node states,
-- resolved node values,
-- failures.
+* `success`,
+* `dry_run`,
+* execution order,
+* node states,
+* resolved node values,
+* failures.
 
 The CLI and VECTIS Studio expose this same contract.

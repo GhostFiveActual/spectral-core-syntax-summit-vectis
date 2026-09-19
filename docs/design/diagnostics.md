@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Diagnostic System
 
 Diagnostics are deterministic compiler/runtime data, not free-form log strings.
@@ -6,10 +16,10 @@ Diagnostics are deterministic compiler/runtime data, not free-form log strings.
 
 Every `Diagnostic` contains:
 
-- a stable `DiagnosticCode`,
-- severity (`error` or `warning`),
-- a non-empty message,
-- canonical `SourceSpan` data.
+* a stable `DiagnosticCode`,
+* severity (`error` or `warning`),
+* a non-empty message,
+* canonical `SourceSpan` data.
 
 `Diagnostic.to_dict()` produces JSON-safe data for the CLI, Studio, and editor integrations.
 

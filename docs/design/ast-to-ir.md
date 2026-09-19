@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # AST to Execution Graph Compilation
 
 IR-002 defines the deterministic boundary between the validated VECTIS
@@ -62,10 +72,10 @@ when semantic validation prevents compilation.
 
 IR-002 preserves these invariants:
 
-- semantic analysis occurs before execution graph construction;
-- compiler output uses the canonical IR-001 graph classes;
-- dependency direction is producer to consumer;
-- condition branches remain explicit;
-- graph identifiers are deterministic;
-- compilation does not introduce new diagnostic registries;
-- the compiler does not redefine AST, semantic, or IR primitives.
+* semantic analysis occurs before execution graph construction;
+* compiler output uses the canonical IR-001 graph classes;
+* dependency direction is producer to consumer;
+* condition branches remain explicit;
+* graph identifiers are deterministic;
+* compilation does not introduce new diagnostic registries;
+* the compiler does not redefine AST, semantic, or IR primitives.

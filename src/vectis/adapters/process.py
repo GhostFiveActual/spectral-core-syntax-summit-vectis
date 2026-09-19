@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Implements the allowlisted process capability adapter used by VECTIS.
 """Controlled process capability adapter for VECTIS."""
 
 from __future__ import annotations

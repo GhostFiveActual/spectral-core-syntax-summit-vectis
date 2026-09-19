@@ -1,25 +1,35 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Support
 
 ## Usage questions
 
 Start with:
 
-- `README.md`
-- `docs/quickstart.md`
-- `docs/user-guide.md`
-- `docs/README.md`
+* `README.md`
+* `docs/quickstart.md`
+* `docs/user-guide.md`
+* `docs/README.md`
 
 ## Bugs
 
 Use the GitHub bug-report template and include:
 
-- VECTIS version,
-- Python version,
-- operating system,
-- minimal `.vectis` source,
-- command executed,
-- expected behavior,
-- actual diagnostics or runtime result.
+* VECTIS version,
+* Python version,
+* operating system,
+* minimal `.vectis` source,
+* command executed,
+* expected behavior,
+* actual diagnostics or runtime result.
 
 Do not include secrets.
 

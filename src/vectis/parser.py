@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Parses the VECTIS token stream into the canonical typed syntax tree.
 from __future__ import annotations
 
 from dataclasses import replace

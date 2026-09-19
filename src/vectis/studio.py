@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Serves the local VECTIS Studio application and its compiler and runtime API.
 """Local-first VECTIS Studio server."""
 
 from __future__ import annotations
@@ -16,48 +18,14 @@ from typing import Any
 from vectis import __version__
 from vectis.compiler import compile_program
 from vectis.evaluator import builtin_manifest
+from vectis.examples import CANONICAL_EXAMPLES
 from vectis.formatter import format_program
 from vectis.lexer import LexerError
 from vectis.parser import ParserError, parse
 from vectis.runtime import Runtime
 
 
-_EXAMPLES = {
-    "release-gate": '''mission "Release gate" {
-    source ready true;
-    source quality_score 0.96;
-    let label upper("vectis");
-
-    when ready && quality_score >= 0.90 {
-        publish concat(label, " READY");
-    } otherwise {
-        request "manual-review";
-    }
-}
-''',
-    "functions": '''mission "Built-in functions" {
-    source raw_name "  Ghost Five  ";
-    let clean_name trim(raw_name);
-    let banner concat(upper(clean_name), " // VECTIS");
-    let banner_length length(banner);
-
-    when banner_length > 10 {
-        publish banner;
-    }
-}
-''',
-    "branching": '''mission "Deterministic branch" {
-    source score 82;
-    let passing score >= 80;
-
-    when passing {
-        publish "approved";
-    } otherwise {
-        publish "review";
-    }
-}
-''',
-}
+_EXAMPLES = CANONICAL_EXAMPLES
 
 
 def _jsonable(value: Any) -> Any:

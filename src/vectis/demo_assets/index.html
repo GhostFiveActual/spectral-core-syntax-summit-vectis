@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- GHOST FIVE // SPECTRAL CORE // VECTIS | Mission Readiness demo application. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>VECTIS Mission Readiness</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <p class="brand">GHOST FIVE // SPECTRAL CORE // VECTIS</p>
+      <h1>Mission Readiness</h1>
+      <p class="lede">A working application that uses VECTIS to evaluate an operational release gate.</p>
+    </header>
+
+    <section class="grid">
+      <form class="panel form-panel" id="readiness-form">
+        <h2>Mission Inputs</h2>
+        <label>Mission<input id="mission" value="Public preview deployment" required></label>
+        <label>Operator<input id="operator" value="Ghost Five Actual" required></label>
+        <label>Quality score<input id="quality" type="number" min="0" max="100" value="94" required></label>
+        <label>Risk score<input id="risk" type="number" min="0" max="100" value="22" required></label>
+        <label class="check"><input id="ready" type="checkbox" checked> Operational prerequisites are ready</label>
+        <button type="submit">Evaluate with VECTIS</button>
+      </form>
+
+      <section class="panel result-panel" aria-live="polite">
+        <p class="eyebrow">DETERMINISTIC RESULT</p>
+        <div class="status" id="status">READY TO EVALUATE</div>
+        <div class="metrics">
+          <div><span>Nodes</span><strong id="nodes">0</strong></div>
+          <div><span>Edges</span><strong id="edges">0</strong></div>
+          <div><span>Failures</span><strong id="failures">0</strong></div>
+        </div>
+        <h2>Published value</h2>
+        <pre id="published">No execution yet.</pre>
+      </section>
+    </section>
+
+    <section class="panel source-panel">
+      <div class="source-head">
+        <div>
+          <p class="eyebrow">GENERATED VECTIS</p>
+          <h2>Mission Source</h2>
+        </div>
+      </div>
+      <pre id="source">Submit the mission to generate the exact VECTIS source.</pre>
+    </section>
+  </main>
+</body>
+</html>

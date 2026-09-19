@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Error Message Guidelines
 
 Diagnostics are part of the public language/tooling contract.
@@ -6,10 +16,10 @@ Diagnostics are part of the public language/tooling contract.
 
 Every structured diagnostic contains:
 
-- stable code,
-- severity,
-- human-readable message,
-- canonical source span.
+* stable code,
+* severity,
+* human-readable message,
+* canonical source span.
 
 Human-rendered exceptions retain the compatibility shape:
 
@@ -30,12 +40,12 @@ Machine-readable output includes the code/severity/message and source start/end 
 
 Current examples include:
 
-- `LEX001` unterminated string,
-- `SYN003` missing required token/delimiter,
-- `SEM001` unresolved reference,
-- `SEM003` unknown built-in function,
-- `SEM005` type mismatch,
-- `CAP001` unavailable required capability.
+* `LEX001` unterminated string,
+* `SYN003` missing required token/delimiter,
+* `SEM001` unresolved reference,
+* `SEM003` unknown built-in function,
+* `SEM005` type mismatch,
+* `CAP001` unavailable required capability.
 
 ## Writing rules
 

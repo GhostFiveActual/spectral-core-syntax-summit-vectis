@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Usability Contract
 
 VECTIS treats the language, CLI, diagnostics, examples, and Studio as one user-facing product surface.
@@ -6,12 +16,12 @@ VECTIS treats the language, CLI, diagnostics, examples, and Studio as one user-f
 
 The 0.1 language follows these conventions:
 
-- blocks use `{ ... }`,
-- statements end with `;`,
-- strings use double quotes,
-- function calls use `name(arg, ...)`,
-- `when ... { ... } otherwise { ... }` is the conditional form,
-- formatting is canonicalized by `vectis fmt`.
+* blocks use `{ ... }`,
+* statements end with `;`,
+* strings use double quotes,
+* function calls use `name(arg, ...)`,
+* `when ... { ... } otherwise { ... }` is the conditional form,
+* formatting is canonicalized by `vectis fmt`.
 
 There is no automatic semicolon insertion and there are no `if`, `for`, or `while` statements in the current grammar.
 
@@ -33,10 +43,10 @@ Users who prefer a visual workflow can run `vectis studio` and use the same comp
 
 Diagnostics should:
 
-- carry a stable code,
-- identify file/line/column through a source span,
-- explain the violated contract without internal implementation jargon,
-- be serializable for Studio/editor integrations.
+* carry a stable code,
+* identify file/line/column through a source span,
+* explain the violated contract without internal implementation jargon,
+* be serializable for Studio/editor integrations.
 
 ## Studio accessibility
 

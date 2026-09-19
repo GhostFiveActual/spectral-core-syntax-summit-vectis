@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS AST Invariants
 
 ## Purpose
@@ -44,24 +54,24 @@ representations rather than being attached by mutation to AST nodes.
 
 The initial expression model contains:
 
-- string literals
-- numeric literals
-- boolean literals
-- symbolic references
-- unary expressions
-- binary expressions
+* string literals
+* numeric literals
+* boolean literals
+* symbolic references
+* unary expressions
+* binary expressions
 
 The initial statement model contains:
 
-- mission declarations
-- source declarations
-- analysis declarations
-- requirements
-- requests
-- publication
-- citations
-- confidence declarations
-- conditional branches
+* mission declarations
+* source declarations
+* analysis declarations
+* requirements
+* requests
+* publication
+* citations
+* confidence declarations
+* conditional branches
 
 These categories reflect the current semantic model. They do not define
 operator precedence or concrete parsing rules.

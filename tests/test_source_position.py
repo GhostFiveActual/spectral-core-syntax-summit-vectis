@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS source position contract.
 from unittest import TestCase
 
 from vectis.source_position import SourcePosition

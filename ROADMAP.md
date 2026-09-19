@@ -1,71 +1,79 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Roadmap
 
-VECTIS evolves by expanding expressiveness without weakening deterministic planning, inspectability, or explicit authority boundaries.
+VECTIS grows by adding useful language and product capabilities without weakening deterministic planning, inspectability, or explicit authority.
 
-## 0.1 — Public preview
+## 0.1 public preview line
 
-Implemented in the current `0.1.0.dev0` development line:
+The active 0.1 development line establishes a usable end to end product.
 
-- `let` computed declarations,
-- `assert` mission guards,
-- pure deterministic built-in functions,
-- comparison/modulo operators,
-- runtime evaluation of general scalar expressions,
-- resolved node values in runtime results,
-- expanded CLI (`tokens`, `inspect`, `fmt`, `builtins`, `capabilities`, `doctor`, `studio`/`app`),
-- VECTIS Studio local-first visual application,
-- cleaned public product repository and release automation.
+Implemented work includes:
 
-Release gates still outstanding include the explicit license decision and CI proof across Python 3.11–3.14.
+1. Computed values with let.
+2. Assertions.
+3. Deterministic built in functions.
+4. Runtime evaluation against dependency values.
+5. Expanded scalar comparison and arithmetic.
+6. Graph export in JSON, Graphviz DOT, and Mermaid.
+7. Project initialization and batch project testing.
+8. Expression evaluation and an interactive REPL.
+9. VECTIS Studio.
+10. Mission Readiness as an application powered by VECTIS.
+11. Ghost Five repository policy enforcement.
+12. Spectral Core engineering, writing, language, release, and knowledge transfer standards.
 
-## 0.2 — Reusable language units
+Remaining 0.1 release gates include the explicit license decision and final installed package acceptance review.
 
-Planned design work:
+## 0.2 reusable language units
 
-- user-defined pure functions,
-- explicit modules/imports,
-- namespaced function discovery,
-- function signatures and return-type checking,
-- deterministic module graph / cycle detection.
+Planned work:
 
-User-defined functions should remain pure by default. External authority should continue to cross explicit capability/adapter boundaries rather than becoming ordinary function behavior.
+1. User defined pure functions.
+2. Explicit modules and imports.
+3. Namespaced function discovery.
+4. Function signatures and return type checking.
+5. Deterministic module graph validation.
+6. Import cycle detection.
 
-## 0.3 — Structured data
+User defined functions remain pure by default. External authority stays behind explicit capabilities and adapters.
 
-Planned design work:
+## 0.3 structured data
 
-- list values,
-- map/object values,
-- indexing/member access,
-- deterministic collection built-ins such as `map`, `filter`, `any`, and `all`,
-- bounded iteration constructs designed so planning remains inspectable.
+Planned work:
 
-## 0.4 — First-class actions and adapters
+1. List values.
+2. Map or object values.
+3. Index and member access.
+4. Deterministic collection functions.
+5. Bounded iteration with inspectable planning.
 
-Planned design work:
+## 0.4 action model
 
-- explicit action invocation syntax,
-- typed adapter inputs/outputs,
-- capability declarations associated with action signatures,
-- stronger dry-run action plans,
-- structured action result values.
+Planned work:
 
-No action syntax should provide implicit shell/network/filesystem authority.
+1. Explicit action invocation syntax.
+2. Typed adapter inputs and outputs.
+3. Capability declarations tied to action signatures.
+4. Structured action result values.
+5. Stronger dry run action plans.
+
+No action syntax should provide implicit shell, network, or filesystem authority.
 
 ## Studio direction
 
-VECTIS Studio should grow into the primary visual workbench:
+Studio should continue toward the primary visual workbench with source span synchronization, graph node inspection, inline diagnostics, execution history, capability configuration, templates, and module browsing.
 
-- graph-node selection and dependency inspection,
-- source-span ↔ graph-node synchronization,
-- diagnostics inline in the editor,
-- mission templates,
-- capability configuration UI,
-- execution timeline/history,
-- diff view for formatted/planned changes,
-- reusable module/function browser,
-- optional packaged desktop shell after the browser-local product stabilizes.
+Desktop packaging can be evaluated after the browser local application contract is stable.
 
-## Compatibility policy
+## Compatibility
 
-`v0.0.1` remains immutable as the engineering baseline. Development proceeds through new commits/releases; published tags are never rewritten.
+Published tags remain immutable. The v0.0.1 tag is the engineering baseline. The 0.1 line advances through new commits and releases rather than rewriting history.

@@ -1,16 +1,26 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Examples
 
 ## Valid
 
-- `booleans.vectis` — boolean declarations/branching.
-- `capability-workflow.vectis` — capability syntax.
-- `citations.vectis` — citation collection statement.
-- `end-to-end.vectis` — baseline end-to-end workflow.
-- `expression-precedence.vectis` — expression precedence.
-- `functions.vectis` — deterministic built-in functions.
-- `assertions.vectis` — assertion gating.
-- `release-gate.vectis` — 0.1-style values/functions/assert/branch example.
-- `research-accessibility.vectis` — research-oriented syntax example.
+* `booleans.vectis` : boolean declarations/branching.
+* `capability-workflow.vectis` : capability syntax.
+* `citations.vectis` : citation collection statement.
+* `end-to-end.vectis` : baseline end-to-end workflow.
+* `expression-precedence.vectis` : expression precedence.
+* `functions.vectis` : deterministic built-in functions.
+* `assertions.vectis` : assertion gating.
+* `release-gate.vectis` : 0.1-style values/functions/assert/branch example.
+* `research-accessibility.vectis` : research-oriented syntax example.
 
 ## Semantic-invalid
 

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Represents one exact source position used by VECTIS diagnostics.
 """Source positions used by the VECTIS compiler."""
 
 from dataclasses import dataclass

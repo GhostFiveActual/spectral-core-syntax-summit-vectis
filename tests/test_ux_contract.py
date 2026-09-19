@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS ux contract contract.
 import unittest
 from vectis.diagnostic import Diagnostic, DiagnosticSeverity, DiagnosticCode
 from vectis.source_position import SourcePosition

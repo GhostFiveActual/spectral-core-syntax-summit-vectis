@@ -1,16 +1,26 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Threat Model
 
 ## Assets
 
 VECTIS protects:
 
-- source integrity,
-- deterministic compilation,
-- execution-graph integrity,
-- explicit capability boundaries,
-- adapter allowlists and containment rules,
-- diagnostic/source-location integrity,
-- local Studio access boundary.
+* source integrity,
+* deterministic compilation,
+* execution-graph integrity,
+* explicit capability boundaries,
+* adapter allowlists and containment rules,
+* diagnostic/source-location integrity,
+* local Studio access boundary.
 
 ## Trust boundaries
 

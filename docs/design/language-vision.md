@@ -1,37 +1,49 @@
-# Language Vision
+<!-- ghost-five-brand:start -->
+<div align="center">
 
-Modern automation often forces users to coordinate several unrelated systems:
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
 
-- YAML
-- JSON
-- shell scripting
-- CI/CD configuration
-- APIs
-- schedulers
-- workflow engines
-- agent frameworks
+Deterministic automation. Explicit authority. Inspectable execution.
 
-VECTIS provides a constrained domain-specific language that expresses the
-workflow rather than the implementation glue.
+</div>
+<!-- ghost-five-brand:end -->
 
-## Design Principles
+# VECTIS Language Vision
 
-Readable, not ambiguous.
+## Mission
 
-Declarative where possible.
+VECTIS exists to make automation inspectable before execution.
 
-Explicit where consequences matter.
+A VECTIS program should answer four questions clearly:
 
-Deterministic.
+1. What values and conditions exist?
+2. What operations depend on them?
+3. What authority is required?
+4. What will execute when a condition changes the path?
 
-Composable.
+## Direction
 
-Safe by default.
+VECTIS is not trying to replace a general purpose programming language.
 
-Accessible without requiring expertise in every underlying platform.
+It is a focused automation language with a deterministic compiler and runtime boundary.
 
-## AI Boundary
+The language should grow where additional syntax improves automation clarity. It should not grow merely to reproduce host language features.
 
-AI may suggest VECTIS source.
+## Design rules
 
-Once source exists, its meaning is determined by formal syntax and semantics.
+1. Keep syntax small and documented.
+2. Preserve typed structure from source through execution.
+3. Reject invalid meaning before runtime work.
+4. Keep the execution graph inspectable.
+5. Keep pure computation separate from external effects.
+6. Make authority explicit.
+7. Make tooling part of the language product.
+8. Test examples as contracts.
+9. Keep formatting deterministic.
+10. Preserve published compatibility intentionally.
+
+## Product rule
+
+A language is not usable because it parses. A usable language needs formatting, validation, execution, diagnostics, project workflow, examples, inspection, packaging, and a clear application path.
+
+VECTIS 0.1 establishes that baseline for Spectral Core.

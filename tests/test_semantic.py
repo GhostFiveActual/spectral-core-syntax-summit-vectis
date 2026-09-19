@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS semantic contract.
 import unittest
 from vectis.ast import (
     SourceDeclaration,

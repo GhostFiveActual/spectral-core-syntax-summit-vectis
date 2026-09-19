@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS filesystem adapter contract.
 """Tests for the controlled VECTIS filesystem capability adapter."""
 
 from pathlib import Path

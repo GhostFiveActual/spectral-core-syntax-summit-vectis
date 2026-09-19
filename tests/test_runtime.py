@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS runtime contract.
 import unittest
 
 from vectis.capabilities import Capability, CapabilityRegistry

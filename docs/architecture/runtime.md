@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # Runtime Architecture
 
 The VECTIS runtime executes a validated `ExecutionGraph`; it does not execute raw source text.
@@ -6,9 +16,9 @@ The VECTIS runtime executes a validated `ExecutionGraph`; it does not execute ra
 
 A runtime receives:
 
-- an immutable execution graph,
-- an optional explicit set of available capability names,
-- optional handlers for node kinds that require host integration.
+* an immutable execution graph,
+* an optional explicit set of available capability names,
+* optional handlers for node kinds that require host integration.
 
 ## Scheduling
 
@@ -16,8 +26,8 @@ The graph provides a deterministic topological order. A node runs only after its
 
 Conditional edges are explicit:
 
-- a true condition activates `true` edges and skips `false` edges,
-- a false condition activates `false` edges and skips `true` edges.
+* a true condition activates `true` edges and skips `false` edges,
+* a false condition activates `false` edges and skips `true` edges.
 
 Every node compiled inside a branch is condition-gated.
 
@@ -35,12 +45,12 @@ Pure built-in functions are evaluated by `vectis.evaluator` using the same deter
 
 `Runtime.execute()` returns a structured `RuntimeResult` containing:
 
-- success/failure,
-- dry-run status,
-- deterministic execution order,
-- node states,
-- resolved node values,
-- failures.
+* success/failure,
+* dry-run status,
+* deterministic execution order,
+* node states,
+* resolved node values,
+* failures.
 
 This result is exposed by the CLI and VECTIS Studio.
 

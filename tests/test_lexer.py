@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS lexer contract.
 from unittest import TestCase
 
 from vectis.lexer import (

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Compiles validated VECTIS syntax into a deterministic execution graph.
 from __future__ import annotations
 
 from dataclasses import dataclass

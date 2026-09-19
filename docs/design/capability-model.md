@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # Capability Model
 
 VECTIS uses named capabilities to make runtime authority explicit.
@@ -17,9 +27,9 @@ The runtime checks those names against the capability set supplied by the embedd
 
 The 0.1 product defines three standard adapter boundaries:
 
-- `filesystem`,
-- `process`,
-- `http`.
+* `filesystem`,
+* `process`,
+* `http`.
 
 `vectis capabilities` prints the machine-readable registry.
 
@@ -33,8 +43,8 @@ Capability objects do not perform I/O.
 
 Capability validation uses dedicated diagnostics:
 
-- `CAP001` — required capability unavailable,
-- `CAP002` — invalid capability value.
+* `CAP001` : required capability unavailable,
+* `CAP002` : invalid capability value.
 
 `CapabilityDenied` is a subclass of `CapabilityError`, which is a structured `DiagnosticError`.
 
@@ -44,8 +54,8 @@ Runtime `require`/`request` nodes also fail closed when their resolved capabilit
 
 Possessing a capability name is not equivalent to unrestricted host access. The adapter still enforces its own concrete policy:
 
-- filesystem roots are contained,
-- process executables are allowlisted and arguments are structured,
-- HTTP schemes and timeouts are bounded.
+* filesystem roots are contained,
+* process executables are allowlisted and arguments are structured,
+* HTTP schemes and timeouts are bounded.
 
 Applications embedding VECTIS should grant only the capabilities and adapter configuration required for the mission.
