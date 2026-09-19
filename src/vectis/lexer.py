@@ -17,16 +17,16 @@ KEYWORDS = frozenset(
     {
         "mission",
         "source",
+        "let",
         "analyze",
         "when",
         "otherwise",
         "publish",
         "request",
         "require",
+        "assert",
         "citations",
         "confidence",
-        "report",
-        "review",
     }
 )
 
@@ -60,14 +60,15 @@ SINGLE_OPERATORS = frozenset(
         "-",
         "*",
         "/",
+        "%",
         "!",
+        "<",
+        ">",
     }
 )
 
 UNSUPPORTED_OPERATOR_PREFIXES = frozenset(
     {
-        "<",
-        ">",
         "=",
         "&",
         "|",

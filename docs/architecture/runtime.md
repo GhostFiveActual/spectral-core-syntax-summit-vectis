@@ -1,69 +1,59 @@
-```markdown
-# Runtime Design
+# Runtime Architecture
 
-The runtime design of VECTIS is responsible for executing the compiled IR and managing the execution environment. The runtime is designed to be modular and extensible, allowing for easy integration of new capabilities and extensions.
+The VECTIS runtime executes a validated `ExecutionGraph`; it does not execute raw source text.
 
-## Overview
+## Inputs
 
-The runtime consists of several key components:
+A runtime receives:
 
-1. **Execution Engine**: The core component responsible for interpreting and executing the IR.
-2. **Capability Resolver**: Manages the resolution of capabilities required by the IR.
-3. **Diagnostic Handler**: Handles and reports errors and warnings during execution.
-4. **State Manager**: Manages the state of the execution environment, including variables, citations, and confidence levels.
+- an immutable execution graph,
+- an optional explicit set of available capability names,
+- optional handlers for node kinds that require host integration.
 
-## Execution Engine
+## Scheduling
 
-The execution engine is responsible for interpreting and executing the IR. It processes each node in the IR and performs the corresponding action. The engine supports the following operations:
+The graph provides a deterministic topological order. A node runs only after its dependency predecessors reach terminal states. Failed dependencies block downstream nodes.
 
-- **Mission Execution**: Executes a mission by evaluating its body.
-- **Source Declaration**: Declares a source variable and assigns a value.
-- **Analyze Declaration**: Analyzes a value and assigns the result to a variable.
-- **Require Statement**: Checks if a capability is available and raises an error if not.
-- **Request Statement**: Requests a capability and assigns the result to a variable.
-- **Publish Statement**: Publishes a value to a channel.
-- **Citations Statement**: Updates the citation state with the provided values.
-- **Confidence Statement**: Updates the confidence state with the provided value.
-- **When Statement**: Executes a block if a condition is true, and an optional otherwise block if the condition is false.
+Conditional edges are explicit:
 
-## Capability Resolver
+- a true condition activates `true` edges and skips `false` edges,
+- a false condition activates `false` edges and skips `true` edges.
 
-The capability resolver is responsible for resolving capabilities required by the IR. It checks if a capability is available and raises an error if not. The resolver supports the following operations:
+Every node compiled inside a branch is condition-gated.
 
-- **Check Capabilities**: Checks if all required capabilities are available and returns a list of errors if any are missing.
-- **Resolve Capabilities**: Resolves all required capabilities and returns a dictionary of resolved capabilities.
+## Value environment
 
-## Diagnostic Handler
+Source and `let` nodes produce values. Runtime expression evaluation resolves references from dependency-node results, so conditions and computed values can depend on earlier runtime results without Python `eval` or `exec`.
 
-The diagnostic handler is responsible for handling and reporting errors and warnings during execution. It supports the following operations:
+Pure built-in functions are evaluated by `vectis.evaluator` using the same deterministic expression model used by compiler constant folding.
 
-- **Report Error**: Reports an error with a message and source span.
-- **Report Warning**: Reports a warning with a message and source span.
+## Assertions
 
-## State Manager
+`assert expression;` requires a boolean result. A false assertion fails its node. Statements compiled after an assertion in the same block depend on that assertion and become blocked when it fails.
 
-The state manager is responsible for managing the state of the execution environment. It supports the following operations:
+## Runtime result
 
-- **Get Variable**: Retrieves the value of a variable.
-- **Set Variable**: Sets the value of a variable.
-- **Update Citations**: Updates the citation state with the provided values.
-- **Update Confidence**: Updates the confidence state with the provided value.
+`Runtime.execute()` returns a structured `RuntimeResult` containing:
 
-## Security Model
+- success/failure,
+- dry-run status,
+- deterministic execution order,
+- node states,
+- resolved node values,
+- failures.
 
-The runtime is designed with a security model in mind to ensure that only authorized capabilities are executed. The security model supports the following operations:
+This result is exposed by the CLI and VECTIS Studio.
 
-- **Check Capability**: Checks if a capability is authorized and raises an error if not.
-- **Deny Capability**: Denies a capability and raises an error if it is used.
+## Capability checks
 
-## Design Tradeoffs
+`require` and `request` nodes evaluate their capability expression and compare the resulting name to the runtime's explicit capability set. Unavailable authority fails closed.
 
-The runtime design has several tradeoffs to consider:
+A capability grant is not itself an external action. Effects require a configured runtime handler/adapter.
 
-- **Performance**: The runtime must be performant to handle large and complex IRs.
-- **Extensibility**: The runtime must be extensible to support new capabilities and extensions.
-- **Security**: The runtime must be secure to prevent unauthorized access to capabilities.
-- **Usability**: The runtime must be easy to use and understand for developers.
+## Handlers and adapters
 
-By following these design principles, the VECTIS runtime is designed to be efficient, secure, and extensible, providing a robust foundation for executing IRs.
-```
+Handlers are the host integration boundary. Standard adapters provide bounded filesystem, process, and HTTP operations. The runtime does not implicitly spawn a shell, inherit arbitrary process authority, or perform network/filesystem work merely because source text names an action.
+
+## Dry run
+
+Dry run validates runtime scheduling without invoking handlers. It is intended for inspection and planning, not as proof that an external adapter action would succeed in a real environment.

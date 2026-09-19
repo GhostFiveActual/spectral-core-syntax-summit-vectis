@@ -1,0 +1,14 @@
+mission "Release gate" {
+    source ready true;
+    source score 96;
+    let label upper("vectis");
+    let approved ready && score >= 90;
+
+    assert score >= 80;
+
+    when approved {
+        publish concat(label, " READY");
+    } otherwise {
+        publish "manual review";
+    }
+}

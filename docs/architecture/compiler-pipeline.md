@@ -1,31 +1,31 @@
 # Compiler Pipeline
 
-## Source
+## 1. Source
 
-Source locations must remain available through all compiler stages.
+VECTIS source is UTF-8 text. File and source positions are preserved through tokens and AST spans for deterministic diagnostics.
 
-## Lexer
+## 2. Lexer
 
-Characters become typed tokens with source spans.
+`vectis.lexer` converts characters into typed tokens. It recognizes declarations/statements, literals, punctuation, boolean/logical/comparison/arithmetic operators, comments, and identifiers.
 
-## Parser
+## 3. Parser
 
-Tokens become a structured abstract syntax tree according to normative grammar.
+`vectis.parser` produces the canonical AST. Function-call syntax is represented by `CallExpression`; computed declarations use `LetDeclaration`; mission invariants use `AssertStatement`.
 
-## Semantic Analyzer
+## 4. Semantic analyzer
 
-The analyzer validates names, types, capabilities, references, control flow,
-and other language invariants.
+`vectis.semantic` validates declaration uniqueness, reference existence, built-in function names and arity, selected type constraints, boolean conditions/assertions, and numeric confidence values.
 
-## Intermediate Representation
+## 5. Execution graph compiler
 
-Valid programs compile into an explicit execution graph.
+`vectis.compiler` lowers valid AST statements into an `ExecutionGraph` with typed nodes and explicit edges. Reference dependencies become dependency edges. `when` blocks receive explicit true/false edges. Assertions become guard dependencies for later statements in the same block.
 
-## Runtime
+The compiler performs only deterministic constant folding using the pure evaluator and values already known at compile time.
 
-The runtime executes validated graph nodes.
+## 6. Runtime
 
-## Capability Adapters
+The runtime schedules the graph in deterministic topological order and evaluates canonical expressions against actual node values. Compiler and runtime share the same pure expression evaluator to avoid divergent expression semantics.
 
-External effects are provided through explicitly enabled capabilities rather
-than being implicit language behavior.
+## 7. Capability adapters
+
+External effects remain outside the compiler. Runtime handlers and explicit adapters provide bounded filesystem, process, or HTTP integration when the embedding application chooses to configure them.

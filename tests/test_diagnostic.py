@@ -44,6 +44,13 @@ class DiagnosticTests(unittest.TestCase):
                 "SYN005",
                 "SYN006",
                 "SYN007",
+                "SEM001",
+                "SEM002",
+                "SEM003",
+                "SEM004",
+                "SEM005",
+                "CAP001",
+                "CAP002",
             },
         )
 
@@ -117,7 +124,7 @@ class DiagnosticTests(unittest.TestCase):
     def test_lexer_codes(self):
         cases = (
             ('"unterminated', "LEX001"),
-            ("<", "LEX002"),
+            ("=", "LEX002"),
             ("@", "LEX003"),
         )
 
@@ -142,7 +149,6 @@ class DiagnosticTests(unittest.TestCase):
             ('mission "x" { publish result;', "SYN005"),
             ("citations [a,];", "SYN006"),
             ("not_a_statement", "SYN001"),
-            ("report", "SYN007"),
         )
 
         for source, expected in cases:

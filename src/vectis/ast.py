@@ -1,9 +1,4 @@
-"""Typed abstract syntax tree for VECTIS.
-
-The AST represents parsed VECTIS source without performing name resolution,
-type checking, capability validation, or execution planning. Those operations
-belong to later compiler phases.
-"""
+"""Typed abstract syntax tree for the VECTIS language."""
 
 from __future__ import annotations
 
@@ -77,6 +72,24 @@ class Reference(Expression):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class CallExpression(Expression):
+    """Call one deterministic built-in function."""
+
+    name: str
+    arguments: tuple[Expression, ...] = ()
+
+    def __post_init__(self) -> None:
+        Node.__post_init__(self)
+        _require_name(self.name, "CallExpression.name")
+        if not isinstance(self.arguments, tuple):
+            raise TypeError("CallExpression.arguments must be tuple")
+        if not all(isinstance(item, Expression) for item in self.arguments):
+            raise TypeError(
+                "CallExpression.arguments must contain only Expressions"
+            )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class UnaryExpression(Expression):
     operator: str
     operand: Expression
@@ -147,6 +160,20 @@ class SourceDeclaration(Statement):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class LetDeclaration(Statement):
+    """Declare a deterministic computed value."""
+
+    name: str
+    value: Expression
+
+    def __post_init__(self) -> None:
+        Node.__post_init__(self)
+        _require_name(self.name, "LetDeclaration.name")
+        if not isinstance(self.value, Expression):
+            raise TypeError("LetDeclaration.value must be Expression")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class AnalyzeDeclaration(Statement):
     name: str
     value: Expression | None = None
@@ -184,6 +211,18 @@ class RequestStatement(Statement):
         if not isinstance(self.capability, Expression):
             raise TypeError(
                 "RequestStatement.capability must be Expression"
+            )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AssertStatement(Statement):
+    condition: Expression
+
+    def __post_init__(self) -> None:
+        Node.__post_init__(self)
+        if not isinstance(self.condition, Expression):
+            raise TypeError(
+                "AssertStatement.condition must be Expression"
             )
 
 
@@ -268,17 +307,10 @@ class Program(Node):
             )
 
 
-Literal: TypeAlias = (
-    StringLiteral
-    | NumberLiteral
-    | BooleanLiteral
-)
+Literal: TypeAlias = StringLiteral | NumberLiteral | BooleanLiteral
 
 
-def _require_name(
-    value: object,
-    label: str,
-) -> None:
+def _require_name(value: object, label: str) -> None:
     if not isinstance(value, str):
         raise TypeError(f"{label} must be str")
     if not value:

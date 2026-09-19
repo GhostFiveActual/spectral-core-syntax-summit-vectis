@@ -1,0 +1,117 @@
+"""Canonical source formatter for VECTIS."""
+
+from __future__ import annotations
+
+import json
+
+from vectis.ast import (
+    AnalyzeDeclaration,
+    AssertStatement,
+    BinaryExpression,
+    Block,
+    BooleanLiteral,
+    CallExpression,
+    CitationsStatement,
+    ConfidenceStatement,
+    Expression,
+    LetDeclaration,
+    Mission,
+    NumberLiteral,
+    Program,
+    PublishStatement,
+    Reference,
+    RequestStatement,
+    RequireStatement,
+    SourceDeclaration,
+    Statement,
+    StringLiteral,
+    UnaryExpression,
+    WhenStatement,
+)
+
+
+def format_expression(expression: Expression) -> str:
+    if isinstance(expression, StringLiteral):
+        return json.dumps(expression.value, ensure_ascii=False)
+    if isinstance(expression, NumberLiteral):
+        return str(expression.value)
+    if isinstance(expression, BooleanLiteral):
+        return "true" if expression.value else "false"
+    if isinstance(expression, Reference):
+        return expression.name
+    if isinstance(expression, CallExpression):
+        arguments = ", ".join(
+            format_expression(item) for item in expression.arguments
+        )
+        return f"{expression.name}({arguments})"
+    if isinstance(expression, UnaryExpression):
+        return f"{expression.operator}{format_expression(expression.operand)}"
+    if isinstance(expression, BinaryExpression):
+        return (
+            f"({format_expression(expression.left)} "
+            f"{expression.operator} "
+            f"{format_expression(expression.right)})"
+        )
+    raise TypeError(f"Unsupported expression: {type(expression).__name__}")
+
+
+def _format_block(block: Block, level: int) -> list[str]:
+    lines = ["{"]
+    for statement in block.statements:
+        lines.extend(_format_statement(statement, level + 1))
+    lines.append("    " * level + "}")
+    return lines
+
+
+def _format_statement(statement: Statement, level: int) -> list[str]:
+    indent = "    " * level
+
+    if isinstance(statement, Mission):
+        lines = [f"{indent}mission {json.dumps(statement.name)} {{"]
+        for item in statement.body.statements:
+            lines.extend(_format_statement(item, level + 1))
+        lines.append(f"{indent}}}")
+        return lines
+    if isinstance(statement, SourceDeclaration):
+        return [f"{indent}source {statement.name} {format_expression(statement.value)};"]
+    if isinstance(statement, LetDeclaration):
+        return [f"{indent}let {statement.name} {format_expression(statement.value)};"]
+    if isinstance(statement, AnalyzeDeclaration):
+        suffix = "" if statement.value is None else f" {format_expression(statement.value)}"
+        return [f"{indent}analyze {statement.name}{suffix};"]
+    if isinstance(statement, RequireStatement):
+        return [f"{indent}require {format_expression(statement.capability)};"]
+    if isinstance(statement, RequestStatement):
+        return [f"{indent}request {format_expression(statement.capability)};"]
+    if isinstance(statement, AssertStatement):
+        return [f"{indent}assert {format_expression(statement.condition)};"]
+    if isinstance(statement, PublishStatement):
+        return [f"{indent}publish {format_expression(statement.value)};"]
+    if isinstance(statement, ConfidenceStatement):
+        return [f"{indent}confidence {format_expression(statement.value)};"]
+    if isinstance(statement, CitationsStatement):
+        values = ", ".join(format_expression(item) for item in statement.values)
+        return [f"{indent}citations [{values}];"]
+    if isinstance(statement, WhenStatement):
+        lines = [f"{indent}when {format_expression(statement.condition)} {{"]
+        for item in statement.body.statements:
+            lines.extend(_format_statement(item, level + 1))
+        if statement.otherwise is None:
+            lines.append(f"{indent}}}")
+            return lines
+        lines.append(f"{indent}}} otherwise {{")
+        for item in statement.otherwise.statements:
+            lines.extend(_format_statement(item, level + 1))
+        lines.append(f"{indent}}}")
+        return lines
+
+    raise TypeError(f"Unsupported statement: {type(statement).__name__}")
+
+
+def format_program(program: Program) -> str:
+    lines: list[str] = []
+    for index, statement in enumerate(program.statements):
+        if index:
+            lines.append("")
+        lines.extend(_format_statement(statement, 0))
+    return "\n".join(lines) + ("\n" if lines else "")

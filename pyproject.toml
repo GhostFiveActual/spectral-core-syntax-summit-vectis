@@ -4,15 +4,47 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vectis-lang"
-version = "0.0.1"
-description = "Deterministic DSL for readable automation and workflow orchestration"
+version = "0.1.0.dev0"
+description = "Deterministic, capability-aware language and execution toolchain for auditable automation"
+readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+  { name = "Ghost Five // Spectral Core" }
+]
+keywords = [
+  "automation",
+  "dsl",
+  "deterministic",
+  "workflow",
+  "compiler",
+  "runtime"
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Compilers",
+  "Topic :: Software Development :: Interpreters",
+]
+
+[project.urls]
+Homepage = "https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis"
+Repository = "https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis"
+Issues = "https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis/issues"
 
 [project.scripts]
 vectis = "vectis.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+vectis = ["studio_assets/*.html", "studio_assets/*.css", "studio_assets/*.js"]

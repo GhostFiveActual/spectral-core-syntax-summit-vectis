@@ -4,12 +4,15 @@ from dataclasses import dataclass
 
 from vectis.ast import (
     AnalyzeDeclaration,
+    AssertStatement,
     BinaryExpression,
     Block,
     BooleanLiteral,
+    CallExpression,
     CitationsStatement,
     ConfidenceStatement,
     Expression,
+    LetDeclaration,
     Mission,
     NumberLiteral,
     Program,
@@ -24,6 +27,8 @@ from vectis.ast import (
     WhenStatement,
 )
 from vectis.diagnostic import Diagnostic
+from vectis.evaluator import EvaluationError, evaluate_expression
+from vectis.formatter import format_expression
 from vectis.ir import (
     EdgeKind,
     ExecutionGraph,
@@ -47,9 +52,7 @@ class CompileResult:
 class CompilationError(ValueError):
     def __init__(self, diagnostics: tuple[Diagnostic, ...]) -> None:
         self.diagnostics = diagnostics
-
         message = "VECTIS compilation failed"
-
         if diagnostics:
             rendered = "; ".join(
                 diagnostic.render()
@@ -58,106 +61,42 @@ class CompilationError(ValueError):
                 for diagnostic in diagnostics
             )
             message = f"{message}: {rendered}"
-
         super().__init__(message)
 
 
-def _semantic_diagnostics(
-    program: Program,
-) -> tuple[Diagnostic, ...]:
+def _semantic_diagnostics(program: Program) -> tuple[Diagnostic, ...]:
     result = analyze_semantics(program)
-
     if result is None:
         return ()
-
     if isinstance(result, (list, tuple)):
         return tuple(result)
-
-    diagnostics = getattr(
-        result,
-        "diagnostics",
-        None,
-    )
-
+    diagnostics = getattr(result, "diagnostics", None)
     if diagnostics is not None:
         return tuple(diagnostics)
-
     raise TypeError(
         "vectis.semantic.analyze returned an unsupported result type"
     )
 
 
-def _expression_text(
-    expression: Expression,
-) -> str:
-    if isinstance(expression, StringLiteral):
-        return repr(expression.value)
-
-    if isinstance(expression, NumberLiteral):
-        return str(expression.value)
-
-    if isinstance(expression, BooleanLiteral):
-        return "true" if expression.value else "false"
-
-    if isinstance(expression, Reference):
-        return expression.name
-
-    if isinstance(expression, UnaryExpression):
-        return (
-            f"{expression.operator}"
-            f"{_expression_text(expression.operand)}"
-        )
-
-    if isinstance(expression, BinaryExpression):
-        return (
-            "("
-            f"{_expression_text(expression.left)} "
-            f"{expression.operator} "
-            f"{_expression_text(expression.right)}"
-            ")"
-        )
-
-    raise TypeError(
-        "unsupported VECTIS expression: "
-        f"{type(expression).__name__}"
-    )
-
-
-def _scalar_value(
-    expression: Expression,
-) -> str | int | float | bool | None:
-    if isinstance(expression, StringLiteral):
-        return expression.value
-
-    if isinstance(expression, NumberLiteral):
-        return expression.value
-
-    if isinstance(expression, BooleanLiteral):
-        return expression.value
-
-    return None
-
-
-def _reference_names(
-    expression: Expression,
-) -> tuple[str, ...]:
+def _reference_names(expression: Expression) -> tuple[str, ...]:
     names: list[str] = []
 
     def visit(current: Expression) -> None:
         if isinstance(current, Reference):
             names.append(current.name)
             return
-
         if isinstance(current, UnaryExpression):
             visit(current.operand)
             return
-
         if isinstance(current, BinaryExpression):
             visit(current.left)
             visit(current.right)
+            return
+        if isinstance(current, CallExpression):
+            for argument in current.arguments:
+                visit(argument)
 
     visit(expression)
-
     return tuple(dict.fromkeys(names))
 
 
@@ -168,42 +107,28 @@ class _GraphBuilder:
         self.node_ids: set[str] = set()
         self.edge_keys: set[tuple[str, str, EdgeKind]] = set()
         self.counters: dict[str, int] = {}
+        self.known_values: dict[str, str | int | float | bool | None] = {}
 
-    def build(
-        self,
-        program: Program,
-    ) -> ExecutionGraph:
+    def build(self, program: Program) -> ExecutionGraph:
         for statement in program.statements:
             self._compile_statement(statement)
-
         return ExecutionGraph(
             nodes=tuple(self.nodes),
             edges=tuple(self.edges),
         )
 
-    def _fresh_id(
-        self,
-        prefix: str,
-    ) -> str:
+    def _fresh_id(self, prefix: str) -> str:
         counter = self.counters.get(prefix, 0)
-
         while True:
             counter += 1
             candidate = f"{prefix}:{counter:04d}"
-
             if candidate not in self.node_ids:
                 self.counters[prefix] = counter
                 return candidate
 
-    def _add_node(
-        self,
-        node: GraphNode,
-    ) -> None:
+    def _add_node(self, node: GraphNode) -> None:
         if node.id in self.node_ids:
-            raise ValueError(
-                f"duplicate compiler node id: {node.id}"
-            )
-
+            raise ValueError(f"duplicate compiler node id: {node.id}")
         self.node_ids.add(node.id)
         self.nodes.append(node)
 
@@ -213,24 +138,11 @@ class _GraphBuilder:
         target: str,
         kind: EdgeKind = EdgeKind.DEPENDENCY,
     ) -> None:
-        key = (
-            source,
-            target,
-            kind,
-        )
-
+        key = (source, target, kind)
         if key in self.edge_keys:
             return
-
         self.edge_keys.add(key)
-
-        self.edges.append(
-            GraphEdge(
-                source=source,
-                target=target,
-                kind=kind,
-            )
-        )
+        self.edges.append(GraphEdge(source=source, target=target, kind=kind))
 
     def _add_expression_dependencies(
         self,
@@ -239,324 +151,235 @@ class _GraphBuilder:
     ) -> None:
         for name in _reference_names(expression):
             if name in self.node_ids:
-                self._add_edge(
-                    name,
-                    target,
-                    EdgeKind.DEPENDENCY,
-                )
+                self._add_edge(name, target, EdgeKind.DEPENDENCY)
 
-    def _compile_block(
-        self,
-        block: Block,
-    ) -> tuple[str, ...]:
+    def _try_value(self, expression: Expression) -> str | int | float | bool | None:
+        try:
+            return evaluate_expression(expression, self.known_values)
+        except EvaluationError:
+            return None
+
+    def _expression_metadata(self, expression: Expression):
+        return (("expression", format_expression(expression)),)
+
+    def _compile_block(self, block: Block) -> tuple[str, ...]:
         created: list[str] = []
+        assertion_guards: list[str] = []
 
         for statement in block.statements:
-            created.extend(
-                self._compile_statement(statement)
-            )
+            statement_nodes = self._compile_statement(statement)
+
+            for guard_id in assertion_guards:
+                for node_id in statement_nodes:
+                    if node_id != guard_id:
+                        self._add_edge(
+                            guard_id,
+                            node_id,
+                            EdgeKind.DEPENDENCY,
+                        )
+
+            created.extend(statement_nodes)
+
+            if isinstance(statement, AssertStatement):
+                assertion_guards.extend(statement_nodes)
 
         return tuple(created)
 
-    def _compile_statement(
+    def _compile_named_value(
         self,
-        statement: Statement,
+        *,
+        node_id: str,
+        kind: NodeKind,
+        expression: Expression,
     ) -> tuple[str, ...]:
+        value = self._try_value(expression)
+        self._add_node(
+            GraphNode(
+                id=node_id,
+                kind=kind,
+                label=node_id,
+                value=value,
+                metadata=self._expression_metadata(expression),
+            )
+        )
+        self._add_expression_dependencies(expression, node_id)
+        if value is not None:
+            self.known_values[node_id] = value
+        return (node_id,)
+
+    def _compile_statement(self, statement: Statement) -> tuple[str, ...]:
         if isinstance(statement, Mission):
             return self._compile_block(statement.body)
 
         if isinstance(statement, SourceDeclaration):
-            node_id = statement.name
-
-            self._add_node(
-                GraphNode(
-                    id=node_id,
-                    kind=NodeKind.SOURCE,
-                    label=statement.name,
-                    value=_scalar_value(statement.value),
-                    metadata=(
-                        (
-                            "expression",
-                            _expression_text(statement.value),
-                        ),
-                    ),
-                )
+            return self._compile_named_value(
+                node_id=statement.name,
+                kind=NodeKind.SOURCE,
+                expression=statement.value,
             )
 
-            self._add_expression_dependencies(
-                statement.value,
-                node_id,
+        if isinstance(statement, LetDeclaration):
+            return self._compile_named_value(
+                node_id=statement.name,
+                kind=NodeKind.VALUE,
+                expression=statement.value,
             )
-
-            return (node_id,)
 
         if isinstance(statement, AnalyzeDeclaration):
             node_id = statement.name
-
             metadata = ()
-
+            value = None
             if statement.value is not None:
-                metadata = (
-                    (
-                        "expression",
-                        _expression_text(statement.value),
-                    ),
-                )
-
+                value = self._try_value(statement.value)
+                metadata = self._expression_metadata(statement.value)
             self._add_node(
                 GraphNode(
                     id=node_id,
                     kind=NodeKind.ANALYZE,
                     label=statement.name,
-                    value=(
-                        _scalar_value(statement.value)
-                        if statement.value is not None
-                        else None
-                    ),
+                    value=value,
                     metadata=metadata,
                 )
             )
-
             if statement.value is not None:
-                self._add_expression_dependencies(
-                    statement.value,
-                    node_id,
-                )
-
+                self._add_expression_dependencies(statement.value, node_id)
+            if value is not None:
+                self.known_values[node_id] = value
             return (node_id,)
 
         if isinstance(statement, RequireStatement):
-            node_id = self._fresh_id("require")
-
-            self._add_node(
-                GraphNode(
-                    id=node_id,
-                    kind=NodeKind.REQUIRE,
-                    label="require",
-                    value=_scalar_value(statement.capability),
-                    metadata=(
-                        (
-                            "expression",
-                            _expression_text(statement.capability),
-                        ),
-                    ),
-                )
+            return self._compile_action(
+                prefix="require",
+                kind=NodeKind.REQUIRE,
+                expression=statement.capability,
             )
-
-            self._add_expression_dependencies(
-                statement.capability,
-                node_id,
-            )
-
-            return (node_id,)
 
         if isinstance(statement, RequestStatement):
-            node_id = self._fresh_id("request")
-
-            self._add_node(
-                GraphNode(
-                    id=node_id,
-                    kind=NodeKind.REQUEST,
-                    label="request",
-                    value=_scalar_value(statement.capability),
-                    metadata=(
-                        (
-                            "expression",
-                            _expression_text(statement.capability),
-                        ),
-                    ),
-                )
+            return self._compile_action(
+                prefix="request",
+                kind=NodeKind.REQUEST,
+                expression=statement.capability,
             )
 
-            self._add_expression_dependencies(
-                statement.capability,
-                node_id,
+        if isinstance(statement, AssertStatement):
+            return self._compile_action(
+                prefix="assert",
+                kind=NodeKind.ASSERT,
+                expression=statement.condition,
             )
-
-            return (node_id,)
 
         if isinstance(statement, PublishStatement):
-            node_id = self._fresh_id("publish")
-
-            self._add_node(
-                GraphNode(
-                    id=node_id,
-                    kind=NodeKind.PUBLISH,
-                    label="publish",
-                    value=_scalar_value(statement.value),
-                    metadata=(
-                        (
-                            "expression",
-                            _expression_text(statement.value),
-                        ),
-                    ),
-                )
+            return self._compile_action(
+                prefix="publish",
+                kind=NodeKind.PUBLISH,
+                expression=statement.value,
             )
 
-            self._add_expression_dependencies(
-                statement.value,
-                node_id,
+        if isinstance(statement, ConfidenceStatement):
+            return self._compile_action(
+                prefix="confidence",
+                kind=NodeKind.CONFIDENCE,
+                expression=statement.value,
             )
-
-            return (node_id,)
 
         if isinstance(statement, CitationsStatement):
             node_id = self._fresh_id("citations")
-
             self._add_node(
                 GraphNode(
                     id=node_id,
                     kind=NodeKind.CITATIONS,
                     label="citations",
                     metadata=(
-                        (
-                            "count",
-                            len(statement.values),
-                        ),
+                        ("count", len(statement.values)),
                         (
                             "values",
                             ", ".join(
-                                _expression_text(value)
+                                format_expression(value)
                                 for value in statement.values
                             ),
                         ),
                     ),
                 )
             )
-
             for value in statement.values:
-                self._add_expression_dependencies(
-                    value,
-                    node_id,
-                )
-
-            return (node_id,)
-
-        if isinstance(statement, ConfidenceStatement):
-            node_id = self._fresh_id("confidence")
-
-            if "CONFIDENCE" not in NodeKind.__members__:
-                raise ValueError(
-                    "canonical IR does not define "
-                    "NodeKind.CONFIDENCE"
-                )
-
-            kind = NodeKind.__members__["CONFIDENCE"]
-
-            self._add_node(
-                GraphNode(
-                    id=node_id,
-                    kind=kind,
-                    label="confidence",
-                    value=_scalar_value(statement.value),
-                    metadata=(
-                        (
-                            "expression",
-                            _expression_text(statement.value),
-                        ),
-                    ),
-                )
-            )
-
-            self._add_expression_dependencies(
-                statement.value,
-                node_id,
-            )
-
+                self._add_expression_dependencies(value, node_id)
             return (node_id,)
 
         if isinstance(statement, WhenStatement):
             condition_id = self._fresh_id("condition")
-
+            condition_value = self._try_value(statement.condition)
             self._add_node(
                 GraphNode(
                     id=condition_id,
                     kind=NodeKind.CONDITION,
                     label="when",
-                    value=_scalar_value(statement.condition),
-                    metadata=(
-                        (
-                            "expression",
-                            _expression_text(statement.condition),
-                        ),
-                    ),
+                    value=condition_value,
+                    metadata=self._expression_metadata(statement.condition),
                 )
             )
+            self._add_expression_dependencies(statement.condition, condition_id)
 
-            self._add_expression_dependencies(
-                statement.condition,
-                condition_id,
-            )
-
-            true_nodes = self._compile_block(
-                statement.body
-            )
-
+            true_nodes = self._compile_block(statement.body)
             false_nodes: tuple[str, ...] = ()
-
             if statement.otherwise is not None:
-                false_nodes = self._compile_block(
-                    statement.otherwise
-                )
+                false_nodes = self._compile_block(statement.otherwise)
 
-            if true_nodes:
+            for node_id in true_nodes:
                 self._add_edge(
                     condition_id,
-                    true_nodes[0],
+                    node_id,
                     EdgeKind.TRUE_BRANCH,
                 )
-
-            if false_nodes:
+            for node_id in false_nodes:
                 self._add_edge(
                     condition_id,
-                    false_nodes[0],
+                    node_id,
                     EdgeKind.FALSE_BRANCH,
                 )
 
-            return (
-                condition_id,
-                *true_nodes,
-                *false_nodes,
-            )
+            return (condition_id, *true_nodes, *false_nodes)
 
         raise TypeError(
             "unsupported VECTIS statement: "
             f"{type(statement).__name__}"
         )
 
-
-def compile_program(
-    program: Program,
-) -> CompileResult:
-    if not isinstance(program, Program):
-        raise TypeError(
-            "compile_program requires a Program"
+    def _compile_action(
+        self,
+        *,
+        prefix: str,
+        kind: NodeKind,
+        expression: Expression,
+    ) -> tuple[str, ...]:
+        node_id = self._fresh_id(prefix)
+        value = self._try_value(expression)
+        self._add_node(
+            GraphNode(
+                id=node_id,
+                kind=kind,
+                label=prefix,
+                value=value,
+                metadata=self._expression_metadata(expression),
+            )
         )
+        self._add_expression_dependencies(expression, node_id)
+        return (node_id,)
+
+
+def compile_program(program: Program) -> CompileResult:
+    if not isinstance(program, Program):
+        raise TypeError("compile_program requires a Program")
 
     diagnostics = _semantic_diagnostics(program)
-
     if diagnostics:
-        return CompileResult(
-            graph=None,
-            diagnostics=diagnostics,
-        )
+        return CompileResult(graph=None, diagnostics=diagnostics)
 
     graph = _GraphBuilder().build(program)
-
-    return CompileResult(
-        graph=graph,
-        diagnostics=(),
-    )
+    return CompileResult(graph=graph, diagnostics=())
 
 
-def compile_ast_to_execution_graph(
-    program: Program,
-) -> ExecutionGraph:
+def compile_ast_to_execution_graph(program: Program) -> ExecutionGraph:
     result = compile_program(program)
-
     if not result.ok or result.graph is None:
-        raise CompilationError(
-            result.diagnostics
-        )
-
+        raise CompilationError(result.diagnostics)
     return result.graph

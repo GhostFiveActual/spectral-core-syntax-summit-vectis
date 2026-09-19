@@ -1,50 +1,21 @@
-```markdown
-# VECTIS Release Candidate 0.0.1
+# VECTIS 0.1.0 Development Release Record
 
-## Overview
+Status: **development / not yet public-preview final**.
 
-This document outlines the release candidate for VECTIS version 0.0.1. The release candidate has been thoroughly tested and is ready for final review.
+The `0.1.0.dev0` line evolves the v0.0.1 engineering baseline into a cleaner public product with a broader language, stronger CLI, deterministic expression evaluation, assertions, and VECTIS Studio.
 
-## Testing
+## Release goals
 
-The complete test suite has been executed, and all tests have passed. The test suite includes unit tests, integration tests, and end-to-end tests.
+1. Keep the v0.0.1 runtime/security invariants that matter.
+2. Remove internal autonomous-build machinery from the public repository.
+3. Make common automation expressions useful without dropping into Python.
+4. Make the execution graph and runtime understandable through a strong UI.
+5. Establish the repository shape intended for outside users and contributors.
 
-## Examples
+## Current non-final items
 
-The official examples have been reviewed, and they pass without any issues.
+- An explicit software license has not yet been chosen.
+- The final short repository name/public location is not yet decided.
+- User-defined functions, modules, loops, and general collection expressions are intentionally deferred.
 
-## Documentation
-
-The documentation has been reviewed, and it matches the implementation. All sections are up-to-date and accurately reflect the current state of the project.
-
-## Security
-
-No unresolved critical security findings have been identified.
-
-## Accessibility
-
-No unresolved major accessibility findings have been identified.
-
-## Release Notes
-
-### New Features
-
-- Initial release of VECTIS with basic syntax and functionality.
-
-### Improvements
-
-- Improved error handling and diagnostics.
-- Enhanced documentation for better user understanding.
-
-### Bug Fixes
-
-- Fixed several bugs related to parsing and execution.
-
-## Conclusion
-
-The release candidate for VECTIS version 0.0.1 has been thoroughly reviewed and is ready for final release. All acceptance criteria have been met, and the project is in a stable state.
-```
-
-## Release contract completion
-
-Final release verification explicitly covers: quality, demo, submission, known.
+See `PUBLIC_RELEASE_CHECKLIST.md` before tagging v0.1.0.

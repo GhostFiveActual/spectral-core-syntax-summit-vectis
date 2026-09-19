@@ -4,7 +4,7 @@ VECTIS treats external authority as an explicit capability boundary.
 
 ## Supported release
 
-The current supported development release is **v0.0.1**.
+The current development line is **0.1.0.dev0**. The immutable **v0.0.1** tag remains the engineering baseline while the public-preview release is prepared.
 
 ## Reporting a vulnerability
 

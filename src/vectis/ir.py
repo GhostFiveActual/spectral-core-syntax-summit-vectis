@@ -12,9 +12,11 @@ JsonScalar: TypeAlias = str | int | float | bool | None
 class NodeKind(str, Enum):
     MISSION = "mission"
     SOURCE = "source"
+    VALUE = "value"
     ANALYZE = "analyze"
     REQUIRE = "require"
     REQUEST = "request"
+    ASSERT = "assert"
     PUBLISH = "publish"
     CITATIONS = "citations"
     CONFIDENCE = "confidence"
