@@ -14,6 +14,18 @@ Deterministic automation. Explicit authority. Inspectable execution.
 
 VECTIS is a deterministic automation language. It converts source into typed syntax, validates the program, compiles an execution graph, and executes that graph through explicit runtime rules.
 
+## Install
+
+Create an isolated environment and install the package in editable mode:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
+Confirm the installation with `vectis version` and `vectis doctor`.
+
 ## Create a project
 
 ```bash
@@ -122,6 +134,12 @@ request "http";
 ```
 
 Granting a capability name does not perform an external action. The embedding application still needs an explicit handler or adapter.
+
+## Diagnostics
+
+VECTIS diagnostics are structured product data. Each diagnostic carries a stable code, severity, message, and source span. Lexer failures use the LEX family, syntax failures use SYN, semantic failures use SEM, and capability failures use CAP.
+
+Use `vectis check` for focused validation or `vectis inspect` when the diagnostic should be reviewed beside tokens, syntax, and the compiled graph.
 
 ## Formatting
 

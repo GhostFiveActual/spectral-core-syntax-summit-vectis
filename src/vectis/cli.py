@@ -489,8 +489,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="vectis",
         description=(
-            "Ghost Five // Spectral Core // VECTIS deterministic "
-            "language, runtime, project, and application toolchain"
+            "VECTIS deterministic language, runtime, and Studio toolchain. "
+            "Ghost Five // Spectral Core project and application commands."
         ),
     )
     parser.add_argument(

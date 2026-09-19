@@ -20,7 +20,7 @@ Run:
 python examples/demo/run_demo.py
 ```
 
-This validates the canonical example through the public parser, compiler, graph, and runtime APIs.
+This validates the canonical example through the public parser, compiler, graph, and runtime APIs. Any syntax or semantic diagnostic remains visible through the same public contracts used by the CLI.
 
 The same source can be inspected through the CLI:
 
