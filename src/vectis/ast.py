@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Defines the typed abstract syntax tree for the VECTIS language.
 """Typed abstract syntax tree for the VECTIS language."""
 
 from __future__ import annotations

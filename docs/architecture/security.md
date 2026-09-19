@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # Security Architecture
 
 VECTIS security is based on deterministic interpretation, explicit runtime authority, and bounded adapters. VECTIS does **not** currently implement user authentication, MFA, RBAC, encryption-at-rest, or a key-management service; those concerns belong to applications that embed or expose VECTIS.
@@ -14,8 +24,8 @@ Named capabilities represent explicit runtime authority. If a mission requires a
 
 Capability diagnostics use the `CAPxxx` family:
 
-- `CAP001` — required capability unavailable,
-- `CAP002` — invalid capability value.
+* `CAP001` : required capability unavailable,
+* `CAP002` : invalid capability value.
 
 ### Filesystem adapter
 
@@ -35,12 +45,12 @@ VECTIS Studio binds to loopback by default. Non-loopback binding requires explic
 
 ## Runtime failure behavior
 
-- semantic errors prevent graph generation,
-- graph cycles are rejected,
-- failed dependencies block downstream nodes,
-- inactive branches are skipped,
-- false assertions fail and block dependent statements,
-- unavailable capabilities fail closed.
+* semantic errors prevent graph generation,
+* graph cycles are rejected,
+* failed dependencies block downstream nodes,
+* inactive branches are skipped,
+* false assertions fail and block dependent statements,
+* unavailable capabilities fail closed.
 
 ## Non-goals for 0.1
 

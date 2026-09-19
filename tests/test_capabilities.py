@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS capabilities contract.
 import unittest
 from vectis.ir import ExecutionGraph, GraphNode, EdgeKind, NodeKind, GraphEdge
 from vectis.ast import RequireStatement, RequestStatement, StringLiteral

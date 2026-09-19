@@ -1,4 +1,14 @@
-# VECTIS Normative Grammar — 0.1
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
+# VECTIS Normative Grammar : 0.1
 
 Status: normative for the `0.1.x` language line.
 

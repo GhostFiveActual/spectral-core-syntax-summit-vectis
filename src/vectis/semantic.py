@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Validates VECTIS declarations, references, functions, and type contracts before compilation.
 """Semantic analysis for VECTIS programs."""
 
 from __future__ import annotations
@@ -84,6 +86,13 @@ _BUILTIN_RESULTS: dict[str, ValueType] = {
     "contains": ValueType.BOOLEAN,
     "starts_with": ValueType.BOOLEAN,
     "ends_with": ValueType.BOOLEAN,
+    "capitalize": ValueType.STRING,
+    "title": ValueType.STRING,
+    "replace": ValueType.STRING,
+    "repeat": ValueType.STRING,
+    "clamp": ValueType.NUMBER,
+    "between": ValueType.BOOLEAN,
+    "if_else": ValueType.UNKNOWN,
     "abs": ValueType.NUMBER,
     "round": ValueType.NUMBER,
     "min": ValueType.NUMBER,

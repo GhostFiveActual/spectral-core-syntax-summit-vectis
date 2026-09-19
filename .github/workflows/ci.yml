@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# GitHub Actions workflow for VECTIS validation and delivery.
 name: CI
 
 on:

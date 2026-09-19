@@ -1,3 +1,5 @@
+// GHOST FIVE // SPECTRAL CORE // VECTIS
+// Canonical language example: research accessibility.
 mission "Research accessibility tools" {
     source web "accessible developer tools";
     analyze findings;

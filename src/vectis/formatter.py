@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Formats VECTIS source into the canonical project style.
 """Canonical source formatter for VECTIS."""
 
 from __future__ import annotations

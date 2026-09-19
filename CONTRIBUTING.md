@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # Contributing to VECTIS
 
 VECTIS favors deterministic behavior, explicit contracts, small reviewable changes, and tests that exercise the real compiler/runtime path.
@@ -19,10 +29,10 @@ python -m pip install -e .
 
 Read the relevant contract:
 
-- `docs/spec/grammar.md`
-- `docs/architecture/compiler-pipeline.md`
-- `docs/architecture/runtime.md`
-- `docs/architecture/security.md`
+* `docs/spec/grammar.md`
+* `docs/architecture/compiler-pipeline.md`
+* `docs/architecture/runtime.md`
+* `docs/architecture/security.md`
 
 Do not silently broaden syntax, runtime authority, or adapter access.
 

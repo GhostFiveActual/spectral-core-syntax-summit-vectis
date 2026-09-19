@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Quickstart
 
 ## Install
@@ -11,70 +21,69 @@ python -m pip install -e .
 Verify the installation:
 
 ```bash
-vectis --version
+vectis version
 vectis doctor
 ```
 
-## Create a mission
-
-Save this as `release-gate.vectis`:
-
-```vectis
-mission "Release gate" {
-    source ready true;
-    source score 92;
-
-    let product upper("vectis");
-    let approved ready && score >= 80;
-    let message concat(product, " READY");
-
-    assert score >= 70;
-
-    when approved {
-        publish message;
-    } otherwise {
-        publish "manual review";
-    }
-}
-```
-
-## Validate and inspect
+## Create a project
 
 ```bash
-vectis check release-gate.vectis
-vectis tokens release-gate.vectis
-vectis inspect release-gate.vectis
-vectis plan release-gate.vectis
+vectis init ./vectis-project
+cd ./vectis-project
 ```
 
-## Format
+The scaffold contains a branded README, project metadata, and a missions directory with an executable starter mission.
+
+## Validate the project
 
 ```bash
-vectis fmt release-gate.vectis
-vectis fmt --check release-gate.vectis
-vectis fmt --write release-gate.vectis
+vectis test .
 ```
 
-## Execute
+## Inspect the mission
 
 ```bash
-vectis run --dry-run release-gate.vectis
-vectis run release-gate.vectis
+vectis check missions/main.vectis
+vectis inspect missions/main.vectis
+vectis graph missions/main.vectis --format mermaid
 ```
 
-Runtime JSON includes node states, failures, execution order, and resolved `node_values`.
+## Execute the mission
+
+```bash
+vectis run --dry-run missions/main.vectis
+vectis run missions/main.vectis
+```
+
+## Evaluate an expression
+
+```bash
+vectis eval 'clamp(108, 0, 100)'
+vectis eval 'if_else(94 >= 80, "AUTHORIZED", "REVIEW")'
+```
 
 ## Explore the language
 
 ```bash
 vectis builtins
 vectis capabilities
+vectis examples
+vectis examples readiness
+vectis repl
 ```
 
-## Launch VECTIS Studio
+## Launch Studio
 
 ```bash
 vectis studio
 ```
 
-By default Studio listens only on `127.0.0.1:8765` and opens a browser. Use `--no-browser` when launching it on a headless system.
+Studio is the language workbench.
+
+## Launch the demo application
+
+```bash
+vectis demo
+```
+
+Mission Readiness is a working application that uses VECTIS as its decision engine.

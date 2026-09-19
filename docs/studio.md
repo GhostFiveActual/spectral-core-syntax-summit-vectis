@@ -1,6 +1,16 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Studio
 
-VECTIS Studio is the local-first graphical application bundled with the `vectis-lang` package.
+VECTIS Studio is the local language workbench packaged with the VECTIS Python distribution.
 
 ## Launch
 
@@ -8,69 +18,32 @@ VECTIS Studio is the local-first graphical application bundled with the `vectis-
 vectis studio
 ```
 
-or:
-
-```bash
-vectis app
-```
-
-Options:
-
-```text
---host HOST
---port PORT
---no-browser
---allow-remote
-```
-
-The default binding is `127.0.0.1:8765`. A non-loopback host is rejected unless `--allow-remote` is supplied explicitly.
+The `vectis app` command is an alias.
 
 ## Workspace
 
 Studio provides:
 
-- mission source editor,
-- line numbers and cursor position,
-- example selector,
-- formatter,
-- Check / Plan / Run actions,
-- execution metrics,
-- native SVG execution-graph visualization,
-- runtime state/value table,
-- diagnostics panel,
-- raw plan JSON,
-- AST JSON,
-- built-in function reference.
-
-Keyboard shortcuts:
-
-- `Ctrl+Enter` — run mission
-- `Ctrl+Shift+F` — format mission
-- `Tab` — insert four spaces in the editor
+1. Mission source editing.
+2. Line and cursor tracking.
+3. Canonical examples.
+4. Formatting.
+5. Check, plan, and run actions.
+6. Execution metrics.
+7. Native execution graph visualization.
+8. Runtime state and value inspection.
+9. Diagnostics.
+10. Raw plan and syntax tree views.
+11. Built in function reference.
 
 ## Local API
 
-Studio is served by the Python package and uses local JSON endpoints:
+Studio uses local JSON endpoints for health, examples, built ins, check, parse, plan, run, and format.
 
-```text
-GET  /api/health
-GET  /api/examples
-GET  /api/builtins
-POST /api/check
-POST /api/parse
-POST /api/plan
-POST /api/run
-POST /api/format
-```
+The server binds to loopback by default. Remote binding requires explicit opt in.
 
-Request bodies use `Content-Type: application/json` and provide a `source` string.
+## Product boundary
 
-The Studio runtime does not automatically grant filesystem, process, or HTTP capabilities.
+Studio is the development workbench. The Mission Readiness demo launched by `vectis demo` is a separate application that embeds VECTIS as its decision engine.
 
-## Front-end boundary
-
-Studio ships plain HTML, CSS, and JavaScript inside the wheel. It has no external CDN dependency and does not use JavaScript `eval`, `new Function`, or HTML injection for compiler output.
-
-## Future desktop packaging
-
-The packaged local application is deliberately web-runtime neutral. A later release can wrap the same local server/UI in a desktop shell without changing VECTIS language semantics. Tauri or another lightweight shell can be evaluated separately once the browser-based Studio contract stabilizes.
+Both products use the same canonical compiler and runtime modules.

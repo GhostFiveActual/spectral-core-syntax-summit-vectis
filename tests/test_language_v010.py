@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS language v010 contract.
 from __future__ import annotations
 
 import unittest

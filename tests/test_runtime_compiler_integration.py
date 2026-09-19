@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS runtime compiler integration contract.
 from __future__ import annotations
 
 import json

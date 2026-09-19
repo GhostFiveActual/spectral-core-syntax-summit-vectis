@@ -1,49 +1,78 @@
-# VECTIS Semantic Model — 0.1
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
+# VECTIS Semantic Model
+
+Status: normative for the 0.1 language line.
 
 ## Purpose
 
-Semantic analysis runs after parsing and before graph generation. A program with semantic diagnostics does not produce an execution graph.
+Semantic analysis runs after parsing and before execution graph generation. A program with semantic diagnostics does not produce a graph.
 
 ## Declarations
 
-`source`, `let`, and `analyze` introduce names into the declaration environment. Duplicate names are rejected with `SEM002`.
+Source, let, and analyze introduce names into the declaration environment.
 
-References must resolve to an earlier visible declaration. Unresolved references produce `SEM001`.
+Duplicate declarations produce SEM002.
 
-## Value types
+References must resolve to an earlier visible declaration. An unresolved reference produces SEM001.
 
-The semantic analyzer tracks four coarse types:
+## Scalar value types
 
-- `string`
-- `number`
-- `boolean`
-- `unknown`
+The current semantic model tracks four coarse types:
 
-`unknown` is used when a value may be supplied by a runtime handler or cannot be statically inferred.
+1. string
+2. number
+3. boolean
+4. unknown
 
-## Built-in functions
+Unknown represents a value that cannot be proven statically or may be supplied by a runtime handler.
 
-Function calls resolve against the deterministic built-in registry.
+## Built in functions
 
-- Unknown function: `SEM003`
-- Invalid argument count: `SEM004`
+Function calls resolve against the deterministic registry in the evaluator.
 
-Return types for standard built-ins are known to the analyzer and feed later expression checks.
+An unknown function produces SEM003.
 
-## Selected type rules
+An invalid argument count produces SEM004.
 
-- `when` conditions must be boolean or `unknown`.
-- `assert` conditions must be boolean or `unknown`.
-- `confidence` must be numeric or `unknown`.
+The 0.1 registry includes text normalization, text tests, concatenation, replacement, bounded repetition, numeric helpers, numeric range checks, conversion, and conditional scalar selection.
 
-Other expression operand checks are also enforced by the deterministic evaluator when values are resolved.
+Use the command below for the exact installed registry:
+
+```bash
+vectis builtins
+```
+
+## Type rules
+
+Known contradictions are rejected before graph generation.
+
+Examples include a nonboolean when condition, a nonboolean assert condition, and a nonnumeric confidence expression.
+
+These failures use SEM005.
 
 ## Graph eligibility
 
-Compilation occurs only when semantic diagnostics are empty. References become dependency edges. Branch bodies become explicit true/false branch edges. Assertions become dependency guards for statements that follow them in the same block.
+Compilation occurs only when semantic diagnostics are empty.
 
-## Runtime expression semantics
+References become dependency edges.
 
-The runtime resolves each node's serialized canonical expression against values already produced by dependency nodes. This supports dynamic reference evaluation rather than relying only on compile-time literal folding.
+Conditional bodies become explicit true or false branch edges.
 
-Pure function calls, arithmetic, comparisons, and boolean operations therefore work with actual runtime node values while preserving deterministic topological scheduling.
+Assertions become dependency guards for statements that follow them in the same block.
+
+## Runtime values
+
+The runtime resolves serialized expressions against values produced by dependency nodes. Pure function calls, arithmetic, comparisons, and boolean operations can therefore use actual runtime values while preserving deterministic topological scheduling.
+
+## Current boundary
+
+The 0.1 value model is scalar. User defined functions, modules, general structured collections, and bounded iteration remain future language work.

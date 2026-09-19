@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Executes validated VECTIS execution graphs in deterministic order.
 """Deterministic execution runtime for VECTIS execution graphs."""
 
 from __future__ import annotations

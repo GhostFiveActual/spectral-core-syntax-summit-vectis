@@ -1,70 +1,61 @@
-# VECTIS CLI Toolchain
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
+# VECTIS Command Line Toolchain
 
 ## Purpose
 
-The `vectis` command provides the local command-line interface for the deterministic VECTIS language pipeline.
+The VECTIS command line is the primary operational interface for the language, compiler, runtime, project workflow, graph inspection, and local applications.
 
-The console entry point remains:
-
-```text
-vectis = "vectis.cli:main"
-```
+It is designed for direct use by a developer and for predictable use from scripts and CI.
 
 ## Commands
 
-The CLI exposes four explicit toolchain commands:
+| Command | Contract |
+| --- | --- |
+| `check` | Parse, analyze, and compile without execution. |
+| `tokens` | Emit lexer tokens as JSON. |
+| `parse` | Emit the typed syntax tree as JSON. |
+| `plan` | Emit the execution graph as JSON. |
+| `inspect` | Emit tokens, syntax tree, diagnostics, and graph together. |
+| `run` | Execute the validated graph. |
+| `fmt` | Print, verify, or write canonical formatting. |
+| `eval` | Evaluate one pure scalar expression. |
+| `graph` | Export JSON, Graphviz DOT, or Mermaid graph text. |
+| `explain` | Emit a structural mission summary. |
+| `init` | Create a branded project scaffold. |
+| `new` | Alias for `init`. |
+| `test` | Compile every VECTIS file under a path. |
+| `examples` | List or print canonical examples. |
+| `repl` | Run an interactive deterministic expression session. |
+| `builtins` | Emit the built in function registry. |
+| `capabilities` | Emit the standard capability registry. |
+| `doctor` | Report local runtime information. |
+| `version` | Print the installed version. |
+| `studio` | Launch VECTIS Studio. |
+| `app` | Alias for Studio. |
+| `demo` | Launch the Mission Readiness application. |
+| `showcase` | Alias for the demo application. |
 
-- `vectis check`
-- `vectis parse`
-- `vectis plan`
-- `vectis run`
+## Input behavior
 
-Each command accepts a VECTIS source file. If the file argument is omitted, or `-` is used, source is read from standard input.
-
-## `vectis check`
-
-`vectis check FILE` parses and semantically compiles a program without executing it.
-
-A valid program prints `OK` and exits successfully. Syntax or semantic diagnostics produce a nonzero result.
-
-## `vectis parse`
-
-`vectis parse FILE` parses source and emits deterministic JSON representing the AST.
-
-This command performs no runtime execution.
-
-## `vectis plan`
-
-`vectis plan FILE` parses and compiles source into the deterministic VECTIS execution graph.
-
-The graph is emitted as JSON using the public execution-graph serialization contract.
-
-## `vectis run`
-
-`vectis run FILE` compiles the source and executes its validated execution graph through the deterministic runtime.
-
-`vectis run --dry-run FILE` requests runtime dry-run behavior so node handlers are not invoked.
-
-Runtime success is reflected in the process exit code and in the structured JSON result.
-
-## Help and version
-
-Running `vectis` without a command prints the main help.
-
-Every command provides clear argparse-generated help, and `vectis --version` prints the installed VECTIS version.
+Commands that accept source use a file path or standard input. Omitting the file for a source command reads from standard input.
 
 ## Exit behavior
 
-The CLI uses explicit exit codes:
+| Code | Meaning |
+| --- | --- |
+| `0` | Requested operation completed successfully. |
+| `1` | VECTIS validation, compilation, project test, or runtime execution failed. |
+| `2` | User input, path, encoding, or command data was invalid. |
 
-- `0` for successful toolchain operations;
-- `1` for VECTIS syntax, semantic, compilation, or runtime failure;
-- `2` for source-file or text-decoding failures.
+## Boundary
 
-## Architectural boundary
-
-The CLI orchestrates existing parser, compiler, execution-graph, and runtime APIs. It does not redefine language semantics.
-
-`check`, `parse`, and `plan` do not execute runtime handlers. `run` delegates execution to the deterministic VECTIS runtime.
-
-Filesystem, process, and HTTP capabilities remain bounded by their explicit adapters and are not broadened by the CLI.
+The CLI routes requests into the public lexer, parser, semantic analyzer, compiler, runtime, formatter, product helpers, Studio, and demo application. It does not define a second copy of the language semantics.

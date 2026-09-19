@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Security Policy
 
 VECTIS treats external authority as an explicit capability boundary.
@@ -18,14 +28,14 @@ If the repository is later made public, configure GitHub Private Vulnerability R
 
 Contributions must preserve these principles:
 
-- no implicit shell execution,
-- no dynamic `eval` or `exec` runtime path,
-- no implicit inheritance of parent process environment,
-- explicit executable allowlists for process adapters,
-- explicit filesystem containment,
-- explicit HTTP scheme and timeout constraints,
-- unavailable capability is denied,
-- semantic validation occurs before execution,
-- execution graphs remain deterministic and acyclic.
+* no implicit shell execution,
+* no dynamic `eval` or `exec` runtime path,
+* no implicit inheritance of parent process environment,
+* explicit executable allowlists for process adapters,
+* explicit filesystem containment,
+* explicit HTTP scheme and timeout constraints,
+* unavailable capability is denied,
+* semantic validation occurs before execution,
+* execution graphs remain deterministic and acyclic.
 
 Security regressions should include a test that fails without the fix.

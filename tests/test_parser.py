@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS parser contract.
 from pathlib import Path
 import unittest
 

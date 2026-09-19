@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS docs contract.
 from __future__ import annotations
 
 from pathlib import Path

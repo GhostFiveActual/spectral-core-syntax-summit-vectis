@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Runs the canonical VECTIS demonstration through the public compiler and runtime APIs.
 """Compile the canonical VECTIS submission demo and print its execution graph."""
 
 from __future__ import annotations

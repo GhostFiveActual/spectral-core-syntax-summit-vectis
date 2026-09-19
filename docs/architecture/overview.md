@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Architecture Overview
 
 VECTIS is a deterministic language toolchain for inspectable automation. It does not translate source into native machine code and it does not contain an optimizer/code-generation stage. Valid source becomes a typed execution graph that the VECTIS runtime schedules directly.
@@ -56,8 +66,8 @@ Capabilities are named runtime authority, not ambient permission. `require` and 
 
 ## Design priorities
 
-1. **Determinism** — stable parsing, graph generation, serialization, and scheduling.
-2. **Inspectability** — users can inspect tokens, AST, graph, diagnostics, runtime states, and values.
-3. **Explicit authority** — language syntax alone does not grant external effects.
-4. **Small semantic surface** — built-ins are pure; external effects are kept at adapter boundaries.
-5. **Fail closed** — malformed source, unavailable capabilities, failed assertions, and invalid graph structures stop or block execution rather than being inferred away.
+1. **Determinism** : stable parsing, graph generation, serialization, and scheduling.
+2. **Inspectability** : users can inspect tokens, AST, graph, diagnostics, runtime states, and values.
+3. **Explicit authority** : language syntax alone does not grant external effects.
+4. **Small semantic surface** : built-ins are pure; external effects are kept at adapter boundaries.
+5. **Fail closed** : malformed source, unavailable capabilities, failed assertions, and invalid graph structures stop or block execution rather than being inferred away.

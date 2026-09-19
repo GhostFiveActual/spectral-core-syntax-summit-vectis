@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Runs the product conformance suite against canonical VECTIS examples and contracts.
 #!/usr/bin/env python3
 """Deterministic VECTIS language conformance checks."""
 

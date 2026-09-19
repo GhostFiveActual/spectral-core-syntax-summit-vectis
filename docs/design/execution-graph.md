@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS Execution Graph IR
 
 The VECTIS intermediate representation is a typed execution graph positioned
@@ -31,11 +41,11 @@ rejected.
 `ExecutionGraph` owns immutable tuples of nodes and edges. Construction enforces
 the following invariant set:
 
-- node identifiers are unique;
-- every edge source and target exists;
-- duplicate typed edges are rejected;
-- the graph is acyclic;
-- topological ordering is deterministic.
+* node identifiers are unique;
+* every edge source and target exists;
+* duplicate typed edges are rejected;
+* the graph is acyclic;
+* topological ordering is deterministic.
 
 The graph therefore represents a DAG suitable for later runtime scheduling.
 

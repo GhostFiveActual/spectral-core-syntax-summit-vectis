@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS ast contract.
 import unittest
 from dataclasses import FrozenInstanceError
 

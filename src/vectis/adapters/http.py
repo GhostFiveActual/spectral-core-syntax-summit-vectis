@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Implements the bounded HTTP capability adapter used by VECTIS.
 """Controlled HTTP capability adapter for VECTIS."""
 
 from __future__ import annotations

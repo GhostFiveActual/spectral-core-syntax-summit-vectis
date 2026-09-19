@@ -1,3 +1,6 @@
+/* GHOST FIVE // SPECTRAL CORE // VECTIS
+ * Runs the VECTIS Studio browser interface and renders compiler and runtime results.
+ */
 "use strict";
 
 const state = {

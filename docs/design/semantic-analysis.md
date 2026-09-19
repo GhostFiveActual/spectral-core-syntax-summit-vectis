@@ -1,3 +1,13 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # Semantic Analysis
 
 Semantic analysis is the compiler stage between parsing and execution-graph generation. It validates relationships that are syntactically valid but not meaningful under the VECTIS language contract.
@@ -6,14 +16,14 @@ Semantic analysis is the compiler stage between parsing and execution-graph gene
 
 The semantic analyzer currently validates:
 
-- duplicate declarations,
-- unresolved references,
-- built-in function names,
-- built-in function arity,
-- boolean `when` conditions,
-- boolean `assert` expressions,
-- numeric `confidence` expressions,
-- selected expression type mismatches.
+* duplicate declarations,
+* unresolved references,
+* built-in function names,
+* built-in function arity,
+* boolean `when` conditions,
+* boolean `assert` expressions,
+* numeric `confidence` expressions,
+* selected expression type mismatches.
 
 It does **not** execute a mission, acquire capabilities, or perform filesystem/process/network effects.
 
@@ -25,10 +35,10 @@ Declarations enter scope in source order. A reference resolves only to a declara
 
 The current semantic type model covers scalar values used by the 0.1 language:
 
-- string,
-- number,
-- boolean,
-- unknown/deferred when a value cannot be proven statically.
+* string,
+* number,
+* boolean,
+* unknown/deferred when a value cannot be proven statically.
 
 Runtime evaluation may resolve a deferred value from dependency-node results, but a known semantic contradiction is rejected before compilation.
 
@@ -42,10 +52,10 @@ The analyzer validates function shape without executing external effects because
 
 Semantic failures use stable `SEMxxx` diagnostics with canonical source spans:
 
-- `SEM001` unresolved reference,
-- `SEM002` duplicate declaration,
-- `SEM003` unknown function,
-- `SEM004` invalid function arity,
-- `SEM005` type mismatch.
+* `SEM001` unresolved reference,
+* `SEM002` duplicate declaration,
+* `SEM003` unknown function,
+* `SEM004` invalid function arity,
+* `SEM005` type mismatch.
 
 The semantic result is deterministic for the same AST.

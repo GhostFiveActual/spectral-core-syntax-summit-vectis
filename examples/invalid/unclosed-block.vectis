@@ -1,2 +1,4 @@
+// GHOST FIVE // SPECTRAL CORE // VECTIS
+// Negative language fixture: unclosed block.
 mission "Unclosed block" {
     publish report;

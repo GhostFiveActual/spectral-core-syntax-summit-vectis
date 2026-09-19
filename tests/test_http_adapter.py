@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Regression coverage for the VECTIS http adapter contract.
 """Security and behavior tests for the VECTIS HTTP adapter."""
 
 from __future__ import annotations

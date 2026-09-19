@@ -1,3 +1,5 @@
+// GHOST FIVE // SPECTRAL CORE // VECTIS
+// Canonical language example: functions.
 mission "Functions" {
     source raw_name "  Ghost Five  ";
     let clean_name trim(raw_name);

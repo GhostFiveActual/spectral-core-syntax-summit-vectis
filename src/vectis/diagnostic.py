@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Defines stable diagnostic codes, source spans, and structured errors.
 from __future__ import annotations
 
 from dataclasses import dataclass

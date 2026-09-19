@@ -1,49 +1,48 @@
-# VECTIS Language Conformance Suite
+<!-- ghost-five-brand:start -->
+<div align="center">
 
-The VECTIS conformance suite provides deterministic checks for the
-language's lexical, syntax, semantic, invalid-input, and regression
-behavior.
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
 
-`tools/conformance.py` contains canonical fixtures and a standalone
-runner. `tests/test_conformance.py` verifies the same behavior through
-the repository test suite.
+Deterministic automation. Explicit authority. Inspectable execution.
 
-## Lexical conformance
+</div>
+<!-- ghost-five-brand:end -->
 
-Positive lexical fixtures are tokenized with the canonical VECTIS
-lexer. Lexical conformance does not treat arbitrary expressions as
-standalone programs.
+# VECTIS Conformance
 
-## Syntax conformance
+## Purpose
 
-Positive syntax fixtures use canonical VECTIS statements and mission
-blocks. Negative fixtures intentionally contain invalid VECTIS and must
-raise a lexer or parser error.
+Conformance means the documented language and product contracts match executable behavior.
 
-## Semantic conformance
+## Required surfaces
 
-Semantic-valid fixtures parse and compile without diagnostics and
-produce an execution graph. Semantic-invalid fixtures remain
-syntactically valid but must produce deterministic semantic diagnostics
-and no execution graph.
+The VECTIS conformance suite covers:
 
-## Regression conformance
+1. Lexing and source positions.
+2. Parsing and syntax tree invariants.
+3. Semantic diagnostics.
+4. Built in function behavior.
+5. Compiler lowering.
+6. Execution graph serialization and cycle rules.
+7. Runtime scheduling and resolved values.
+8. Assertions and conditional branches.
+9. Capability behavior.
+10. Filesystem, process, and HTTP adapter boundaries.
+11. Canonical formatting.
+12. CLI commands.
+13. Project initialization and batch project testing.
+14. VECTIS Studio.
+15. Mission Readiness.
+16. Documentation and repository policy.
 
-Regression fixtures are compiled repeatedly and their execution-graph
-serialization must remain deterministic.
+## Source of truth
 
-## Running the suite
+The executable source of truth is the automated test suite and tools/quality-gate.sh.
 
-Run the standalone matrix with:
+Documentation explains the contract. Tests prove the implemented contract.
 
-    python3 tools/conformance.py
+## Supported Python versions
 
-Run the unit tests with:
+CI validates the current supported Python matrix declared by the package metadata.
 
-    python3 -m unittest -v tests.test_conformance
-
-The suite is local, deterministic, and does not require network access.
-
-## Contract vocabulary
-
-`compiler`, `runtime`
+A supported version is not considered validated until the complete repository quality gate, package build, and isolated wheel smoke test pass on that version.

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Defines the execution graph intermediate representation and serialization contract.
 from __future__ import annotations
 
 import json

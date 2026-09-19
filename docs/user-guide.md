@@ -1,206 +1,204 @@
+<!-- ghost-five-brand:start -->
+<div align="center">
+
+**GHOST FIVE // SPECTRAL CORE // VECTIS**
+
+Deterministic automation. Explicit authority. Inspectable execution.
+
+</div>
+<!-- ghost-five-brand:end -->
+
 # VECTIS User Guide
 
-## Install
+## Purpose
 
-For local development, create an isolated environment and install the package:
+VECTIS is a deterministic automation language. It converts source into typed syntax, validates the program, compiles an execution graph, and executes that graph through explicit runtime rules.
+
+## Create a project
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
+vectis init ./project
+cd ./project
 ```
 
-A packaged release can be installed from its wheel with `python -m pip install <wheel>`.
+Use `vectis new` as an alias for the same operation.
 
-VECTIS is a deterministic language for expressing inspectable automation missions. Source is validated and compiled into an execution graph before the runtime schedules nodes.
+Validate every mission in the project:
 
-## 1. Mission structure
+```bash
+vectis test .
+```
+
+## Declarations
+
+A source declaration defines an initial value.
 
 ```vectis
-mission "Example" {
-    source input 42;
-    let doubled input * 2;
-    publish doubled;
-}
+source score 94;
+source ready true;
+source label "Spectral Core";
 ```
 
-A file may contain multiple statements, including mission blocks. Mission names are strings.
-
-## 2. Declarations
-
-### `source`
-
-Declares an input or initial value:
+A let declaration defines a deterministic computed value.
 
 ```vectis
-source score 93;
-source enabled true;
-source label "Ghost Five";
+let approved ready && score >= 80;
+let title upper(label);
 ```
 
-### `let`
-
-Declares a deterministic computed value:
-
-```vectis
-let passing score >= 80;
-let title concat(upper(label), " // VECTIS");
-```
-
-References create explicit execution-graph dependency edges.
-
-### `analyze`
-
-Preserves the analysis-node contract for workflows that attach an explicit runtime handler:
+An analyze declaration reserves an analysis node that an embedding runtime may connect to a handler.
 
 ```vectis
 analyze findings;
-analyze score raw_score;
 ```
 
-## 3. Expressions
+## Expressions
 
 VECTIS supports strings, numbers, booleans, references, function calls, parentheses, unary operators, and binary operators.
 
-```vectis
-let result (base + bonus) * 2;
-let approved enabled && score >= 80;
-let label upper(trim(raw_label));
-```
-
-Operator precedence, lowest to highest:
+Operator precedence from lowest to highest is:
 
 1. `||`
 2. `&&`
-3. `==`, `!=`
-4. `>`, `>=`, `<`, `<=`
-5. `+`, `-`
-6. `*`, `/`, `%`
-7. unary `!`, `+`, `-`
+3. `==` and `!=`
+4. `>`, `>=`, `<`, and `<=`
+5. `+` and `-`
+6. `*`, `/`, and `%`
+7. unary `!`, `+`, and `-`
 8. primary values and function calls
 
-## 4. Built-in functions
+## Built in functions
 
-Use `vectis builtins` for the machine-readable registry.
+Use:
 
-String/value functions:
+```bash
+vectis builtins
+```
 
-- `upper(text)`
-- `lower(text)`
-- `trim(text)`
-- `length(text)`
-- `concat(value, ...)`
-- `contains(text, part)`
-- `starts_with(text, prefix)`
-- `ends_with(text, suffix)`
+to print the current registry.
 
-Numeric functions:
+The current function surface includes string normalization, string tests, replacement, bounded repetition, concatenation, length, numeric range checks, numeric clamping, minimum, maximum, rounding, conversion, and conditional selection.
 
-- `abs(number)`
-- `round(number)`
-- `round(number, digits)`
-- `min(number, ...)`
-- `max(number, ...)`
-
-Conversions:
-
-- `string(value)`
-- `number(value)`
-- `boolean(value)`
-
-Built-ins are pure and deterministic. They do not acquire capabilities.
-
-## 5. Conditions
+Examples:
 
 ```vectis
-when ready && score >= 90 {
-    publish "ship";
+let clean trim(raw_name);
+let title upper(clean);
+let bounded clamp(score, 0, 100);
+let approved between(bounded, 80, 100);
+let status if_else(approved, "AUTHORIZED", "REVIEW");
+let message replace("GHOST FIVE READY", "READY", status);
+```
+
+## Assertions
+
+Assertions enforce mission invariants.
+
+```vectis
+assert score >= 0 && score <= 100;
+```
+
+A false assertion fails its node and blocks later statements in the same block.
+
+## Conditions
+
+```vectis
+when approved {
+    publish "authorized";
 } otherwise {
     publish "review";
 }
 ```
 
-Every node in each branch receives an explicit branch edge from the condition node. The inactive branch is skipped deterministically.
+Every node in each branch receives an explicit branch edge from the condition node.
 
-## 6. Assertions
+## Capabilities
 
-Use `assert` for mission invariants:
-
-```vectis
-assert score >= 70;
-publish "score accepted";
-```
-
-A false assertion fails its node. Subsequent nodes in the same block are dependency-gated by that assertion and become blocked.
-
-## 7. Outputs and metadata statements
-
-```vectis
-publish result;
-confidence 0.94;
-citations [primary_source, secondary_source];
-```
-
-`confidence` must evaluate to a number.
-
-## 8. Capabilities
+The standard capability names are filesystem, process, and http.
 
 ```vectis
 require "filesystem";
 request "http";
 ```
 
-Capabilities are explicit runtime authority. The standard names are `filesystem`, `process`, and `http`.
+Granting a capability name does not perform an external action. The embedding application still needs an explicit handler or adapter.
 
-The CLI can grant a named capability for validation/runtime gating:
+## Formatting
 
 ```bash
-vectis run --capability filesystem mission.vectis
+vectis fmt mission.vectis
+vectis fmt --check mission.vectis
+vectis fmt --write mission.vectis
 ```
 
-Granting a capability name does not itself perform I/O. Actual external effects require an explicit runtime handler/adapter integration.
-
-## 9. Diagnostics
-
-Diagnostics include a stable code, severity, message, and source span. Current code families include:
-
-- `LEXxxx` — lexical errors
-- `SYNxxx` — syntax errors
-- `SEMxxx` — semantic errors
-
-Examples include unresolved references, duplicate declarations, unknown built-in functions, invalid function arity, and selected type mismatches.
-
-## 10. CLI workflow
-
-A useful development loop is:
+## Inspection
 
 ```bash
-vectis fmt --check mission.vectis
-vectis check mission.vectis
+vectis tokens mission.vectis
+vectis parse mission.vectis
+vectis plan mission.vectis
 vectis inspect mission.vectis
+vectis explain mission.vectis
+```
+
+Export graph formats:
+
+```bash
+vectis graph mission.vectis --format json
+vectis graph mission.vectis --format dot
+vectis graph mission.vectis --format mermaid
+```
+
+## Execution
+
+```bash
 vectis run --dry-run mission.vectis
 vectis run mission.vectis
 ```
 
-## 11. VECTIS Studio
+Runtime output includes success, execution order, node states, node values, and failures.
 
-Launch with:
+## Expression work
+
+Evaluate one pure expression:
+
+```bash
+vectis eval 'if_else(93 >= 90, "READY", "REVIEW")'
+```
+
+Start an interactive session:
+
+```bash
+vectis repl
+```
+
+The REPL supports local scalar assignments for the current session.
+
+## Examples
+
+```bash
+vectis examples
+vectis examples release-gate
+vectis examples functions
+vectis examples readiness
+```
+
+## Applications
+
+Launch the development workbench:
 
 ```bash
 vectis studio
 ```
 
-Studio exposes the source editor, diagnostics, execution graph, raw plan, AST, runtime states, runtime values, examples, formatter, and built-in reference through a local-first UI.
+Launch the application demonstration:
 
-## 12. Current scope
+```bash
+vectis demo
+```
 
-The 0.1 language line deliberately does **not** yet include:
+Studio is for authoring and inspection. Mission Readiness demonstrates VECTIS embedded inside an application.
 
-- user-defined function declarations,
-- modules/imports,
-- loops,
-- asynchronous tasks,
-- general collection/list values outside the existing `citations [...]` statement,
-- implicit adapter execution from language syntax.
+## Current language boundary
 
-Those are expansion areas for later releases and should be added without weakening deterministic planning or capability boundaries.
+VECTIS 0.1 is an automation language, not a general purpose replacement for Python or another host language. The current value model is scalar. User defined functions, modules, structured collections, and bounded iteration remain future language work.

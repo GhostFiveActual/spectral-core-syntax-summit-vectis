@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Evaluates deterministic VECTIS expressions and pure built in functions.
 """Deterministic pure expression evaluation for VECTIS."""
 
 from __future__ import annotations
@@ -93,6 +95,56 @@ def _ends_with(args: tuple[Scalar, ...]) -> Scalar:
     )
 
 
+def _capitalize(args: tuple[Scalar, ...]) -> Scalar:
+    return _require_text(args[0], "capitalize").capitalize()
+
+
+def _title(args: tuple[Scalar, ...]) -> Scalar:
+    return _require_text(args[0], "title").title()
+
+
+def _replace(args: tuple[Scalar, ...]) -> Scalar:
+    text = _require_text(args[0], "replace")
+    old = _require_text(args[1], "replace")
+    new = _require_text(args[2], "replace")
+    return text.replace(old, new)
+
+
+def _repeat(args: tuple[Scalar, ...]) -> Scalar:
+    text = _require_text(args[0], "repeat")
+    count = _require_number(args[1], "repeat")
+    if not isinstance(count, int):
+        raise EvaluationError("repeat() count must be an integer")
+    if not 0 <= count <= 1000:
+        raise EvaluationError("repeat() count must be between 0 and 1000")
+    return text * count
+
+
+def _clamp(args: tuple[Scalar, ...]) -> Scalar:
+    value = _require_number(args[0], "clamp")
+    low = _require_number(args[1], "clamp")
+    high = _require_number(args[2], "clamp")
+    if low > high:
+        raise EvaluationError("clamp() minimum cannot exceed maximum")
+    return max(low, min(value, high))
+
+
+def _between(args: tuple[Scalar, ...]) -> Scalar:
+    value = _require_number(args[0], "between")
+    low = _require_number(args[1], "between")
+    high = _require_number(args[2], "between")
+    if low > high:
+        raise EvaluationError("between() minimum cannot exceed maximum")
+    return low <= value <= high
+
+
+def _if_else(args: tuple[Scalar, ...]) -> Scalar:
+    condition = args[0]
+    if not isinstance(condition, bool):
+        raise EvaluationError("if_else() condition must be boolean")
+    return args[1] if condition else args[2]
+
+
 def _abs(args: tuple[Scalar, ...]) -> Scalar:
     return abs(_require_number(args[0], "abs"))
 
@@ -163,6 +215,13 @@ BUILTINS: dict[str, BuiltinFunction] = {
         BuiltinFunction("contains", "Test whether text contains a substring.", 2, 2, _contains),
         BuiltinFunction("starts_with", "Test a string prefix.", 2, 2, _starts_with),
         BuiltinFunction("ends_with", "Test a string suffix.", 2, 2, _ends_with),
+        BuiltinFunction("capitalize", "Capitalize text.", 1, 1, _capitalize),
+        BuiltinFunction("title", "Convert text to title case.", 1, 1, _title),
+        BuiltinFunction("replace", "Replace text deterministically.", 3, 3, _replace),
+        BuiltinFunction("repeat", "Repeat text a bounded number of times.", 2, 2, _repeat),
+        BuiltinFunction("clamp", "Clamp a number to an inclusive range.", 3, 3, _clamp),
+        BuiltinFunction("between", "Test an inclusive numeric range.", 3, 3, _between),
+        BuiltinFunction("if_else", "Select one of two scalar values.", 3, 3, _if_else),
         BuiltinFunction("abs", "Return absolute numeric value.", 1, 1, _abs),
         BuiltinFunction("round", "Round a number, optionally to digits.", 1, 2, _round),
         BuiltinFunction("min", "Return the minimum numeric value.", 1, None, _min),

@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Represents a source range used by tokens, syntax nodes, and diagnostics.
 """Source spans used by VECTIS diagnostics and tokens."""
 
 from dataclasses import dataclass

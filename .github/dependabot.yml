@@ -1,3 +1,5 @@
+# GHOST FIVE // SPECTRAL CORE // VECTIS
+# Dependency update policy for the VECTIS repository.
 version: 2
 updates:
   - package-ecosystem: github-actions

@@ -1,3 +1,5 @@
+// GHOST FIVE // SPECTRAL CORE // VECTIS
+// Negative language fixture: unresolved reference.
 mission "Unresolved reference" {
     publish missing;
 }
