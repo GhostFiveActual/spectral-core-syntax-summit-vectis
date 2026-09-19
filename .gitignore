@@ -1,26 +1,29 @@
+# Python bytecode / caches
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
+
+# Virtual environments
 .venv/
+venv/
+
+# Packaging / builds
+*.egg-info/
+build/
+dist/
+
+# Local environment / secrets
 .env
 .env.*
 !.env.example
-dist/
-build/
-coverage/
-.pytest_cache/
-.ruff_cache/
-.autonomy/runtime/*
-!.autonomy/runtime/.gitkeep
-artifacts/runtime/*
-!artifacts/runtime/.gitkeep
-artifacts/qa/*
-!artifacts/qa/.gitkeep
 
-# Python / packaging artifacts
-venv/
-*.py[cod]
-*.egg-info/
-.mypy_cache/
-.coverage
-htmlcov/
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

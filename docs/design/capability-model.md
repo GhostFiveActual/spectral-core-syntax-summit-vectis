@@ -1,117 +1,51 @@
-```markdown
 # Capability Model
 
-## Overview
+VECTIS uses named capabilities to make runtime authority explicit.
 
-The capability model in VECTIS is designed to ensure that all operations are explicitly declared and that any implicit privileged behavior is denied. This model is crucial for maintaining security and predictability in the system.
+## Principle
 
-## Capability Declarations
+Language syntax does not grant ambient host permission. A mission may declare a requirement or request:
 
-A capability declaration is a statement that explicitly grants a capability to a node in the execution graph. This is done using the `RequireStatement` and `RequestStatement` in the VECTIS AST.
-
-### Example
-
-```python
-require_capability = RequireStatement(
-    capability=StringLiteral(value="read_file"),
-    span=point_span(file="example.py", line=10, column=5)
-)
-
-request_capability = RequestStatement(
-    capability=StringLiteral(value="write_file"),
-    span=point_span(file="example.py", line=15, column=5)
-)
+```vectis
+require "filesystem";
+request "http";
 ```
 
-## Unavailable Capabilities Denied
+The runtime checks those names against the capability set supplied by the embedding application.
 
-If a node attempts to use a capability that has not been explicitly granted, the system will deny the operation and raise a `CapabilityError`.
+## Standard capability names
 
-### Example
+The 0.1 product defines three standard adapter boundaries:
 
-```python
-class CapabilityError(DiagnosticError):
-    def __init__(self, capability: Expression, span: SourceSpan) -> None:
-        super().__init__(
-            diagnostic=error_diagnostic(
-                code=DiagnosticCode.CAPABILITY_DENIED,
-                message=f"Capability '{capability.value}' denied",
-                span=span,
-            )
-        )
-```
+- `filesystem`,
+- `process`,
+- `http`.
 
-## No Implicit Privileged Behavior
+`vectis capabilities` prints the machine-readable registry.
 
-The capability model ensures that no operations are performed implicitly. All capabilities must be explicitly requested or required.
+## Capability objects
 
-### Example
+`vectis.capabilities.Capability` describes a named unit of authority. `CapabilityRegistry` stores explicitly declared capability definitions and preserves the `CapabilityModel` alias for v0.0.x API compatibility.
 
-```python
-def execute_program(program: Program) -> ExecutionGraph:
-    graph = ExecutionGraph(nodes=(), edges=())
+Capability objects do not perform I/O.
 
-    for statement in program.statements:
-        if isinstance(statement, RequireStatement):
-            if statement.capability.value not in graph.node_ids:
-                raise CapabilityError(
-                    capability=statement.capability,
-                    span=statement.span,
-                )
+## Failure behavior
 
-        if isinstance(statement, RequestStatement):
-            if statement.capability.value not in graph.node_ids:
-                raise CapabilityError(
-                    capability=statement.capability,
-                    span=statement.span,
-                )
+Capability validation uses dedicated diagnostics:
 
-        # Add other statement types to the graph
+- `CAP001` — required capability unavailable,
+- `CAP002` — invalid capability value.
 
-    return graph
-```
+`CapabilityDenied` is a subclass of `CapabilityError`, which is a structured `DiagnosticError`.
 
-## Capability Tests
+Runtime `require`/`request` nodes also fail closed when their resolved capability name is not present in the explicit runtime capability set.
 
-To ensure that the capability model is working correctly, we need to write tests that check for the presence of capability declarations and the denial of unavailable capabilities.
+## Adapter boundary
 
-### Example
+Possessing a capability name is not equivalent to unrestricted host access. The adapter still enforces its own concrete policy:
 
-```python
-def test_capability_declaration():
-    program = Program(
-        statements=(
-            RequireStatement(
-                capability=StringLiteral(value="read_file"),
-                span=point_span(file="test_capability.py", line=10, column=5)
-            ),
-            RequestStatement(
-                capability=StringLiteral(value="write_file"),
-                span=point_span(file="test_capability.py", line=15, column=5)
-            ),
-        )
-    )
+- filesystem roots are contained,
+- process executables are allowlisted and arguments are structured,
+- HTTP schemes and timeouts are bounded.
 
-    graph = execute_program(program)
-
-    assert "read_file" in graph.node_ids
-    assert "write_file" in graph.node_ids
-
-def test_unavailable_capability_denied():
-    program = Program(
-        statements=(
-            RequestStatement(
-                capability=StringLiteral(value="delete_file"),
-                span=point_span(file="test_capability.py", line=20, column=5)
-            ),
-        )
-    )
-
-    with pytest.raises(CapabilityError):
-        execute_program(program)
-```
-
-## Conclusion
-
-The capability model in VECTIS ensures that all operations are explicitly declared and that any implicit privileged behavior is denied. This model is crucial for maintaining security and predictability in the system. By following the guidelines in this document, you can ensure that your VECTIS programs are secure and reliable.
-```
+Applications embedding VECTIS should grant only the capabilities and adapter configuration required for the mission.

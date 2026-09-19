@@ -18,8 +18,16 @@ concurrency:
 
 jobs:
   quality:
-    name: Quality / Python 3.14
+    name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
 
     steps:
       - name: Checkout
@@ -28,7 +36,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
       - name: Install package and build tooling
@@ -43,7 +51,7 @@ jobs:
       - name: Build wheel and source distribution
         run: python -m build
 
-      - name: Isolated wheel smoke test
+      - name: Isolated wheel and CLI smoke test
         shell: bash
         run: |
           set -euo pipefail
@@ -58,37 +66,48 @@ jobs:
 
           cat >/tmp/vectis-ci-smoke.vectis <<'VECTIS'
           mission "CI package smoke test" {
-              source ready true;
-              source result "VECTIS package works";
+              source score 93;
+              source raw_name " ghost five ";
+              let label upper(trim(raw_name));
+              let approved score >= 90 && length(label) > 0;
+              assert approved;
 
-              when ready {
-                  publish result;
+              when approved {
+                  publish concat(label, " // VECTIS");
+              } otherwise {
+                  request "manual-review";
               }
           }
           VECTIS
 
           cd /tmp
 
-          /tmp/vectis-wheel-smoke/bin/vectis --version
-          /tmp/vectis-wheel-smoke/bin/vectis check /tmp/vectis-ci-smoke.vectis
-          /tmp/vectis-wheel-smoke/bin/vectis plan /tmp/vectis-ci-smoke.vectis
-          /tmp/vectis-wheel-smoke/bin/vectis run /tmp/vectis-ci-smoke.vectis \
-            | tee /tmp/vectis-ci-result.json
+          CLI=/tmp/vectis-wheel-smoke/bin/vectis
+          "$CLI" --version
+          "$CLI" doctor
+          "$CLI" builtins >/tmp/vectis-builtins.json
+          "$CLI" capabilities >/tmp/vectis-capabilities.json
+          "$CLI" fmt --write /tmp/vectis-ci-smoke.vectis
+          "$CLI" fmt --check /tmp/vectis-ci-smoke.vectis
+          "$CLI" check /tmp/vectis-ci-smoke.vectis
+          "$CLI" inspect /tmp/vectis-ci-smoke.vectis >/tmp/vectis-inspect.json
+          "$CLI" run /tmp/vectis-ci-smoke.vectis | tee /tmp/vectis-ci-result.json
 
           /tmp/vectis-wheel-smoke/bin/python - <<'PY'
           import json
+          from importlib.resources import files
           from pathlib import Path
 
-          result = json.loads(
-              Path("/tmp/vectis-ci-result.json").read_text(
-                  encoding="utf-8"
-              )
-          )
+          result = json.loads(Path('/tmp/vectis-ci-result.json').read_text())
+          states = dict(result['node_states'])
 
-          states = dict(result["node_states"])
+          assert result['success'] is True
+          assert result['failures'] == []
+          assert states['assert:0001'] == 'succeeded'
+          assert states['condition:0001'] == 'succeeded'
+          assert states['publish:0001'] == 'succeeded'
 
-          assert result["success"] is True
-          assert result["failures"] == []
-          assert states["condition:0001"] == "succeeded"
-          assert states["publish:0001"] == "succeeded"
+          assets = files('vectis').joinpath('studio_assets')
+          for name in ('index.html', 'styles.css', 'app.js'):
+              assert assets.joinpath(name).is_file(), name
           PY

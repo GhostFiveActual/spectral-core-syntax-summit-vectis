@@ -1,55 +1,63 @@
-```markdown
-# Technical Architecture Overview
+# VECTIS Architecture Overview
 
-## System Architecture
+VECTIS is a deterministic language toolchain for inspectable automation. It does not translate source into native machine code and it does not contain an optimizer/code-generation stage. Valid source becomes a typed execution graph that the VECTIS runtime schedules directly.
 
-The VECTIS system is designed to be modular and extensible, with a focus on deterministic execution and runtime capabilities. The core components include the IR (Intermediate Representation), the Runtime, and the ExecutionGraph.
+## System pipeline
 
-## Compiler Stages
-
-1. **Parsing**: Converts source code into an abstract syntax tree (AST).
-2. **IR Generation**: Translates the AST into an IR representation.
-3. **Optimization**: Applies optimizations to the IR to improve performance.
-4. **Code Generation**: Translates the optimized IR into executable code.
-
-## IR Design
-
-The IR is designed to be a high-level, structured representation of the program. It includes nodes and edges that represent the program's structure and dependencies. The IR is designed to be easily extensible and to support a wide range of programming languages.
-
-## Runtime Design
-
-The Runtime is responsible for executing the IR in a deterministic manner. It uses a topological sort to determine the order in which nodes should be executed. The Runtime also handles dependencies between nodes and propagates failures through the graph.
-
-## Security Model
-
-The VECTIS system includes a security model that ensures that only authorized operations are performed. The model includes capabilities that define the set of operations that can be performed by each node. The Runtime checks these capabilities before executing a node.
-
-## Design Tradeoffs
-
-1. **Determinism**: The system is designed to be deterministic, meaning that the same input will always produce the same output. This is achieved by using a topological sort to determine the order in which nodes should be executed.
-2. **Extensibility**: The system is designed to be extensible, meaning that new nodes and edges can be added to the IR without affecting the existing code.
-3. **Performance**: The system is designed to be performant, meaning that it can execute large programs efficiently.
-4. **Security**: The system is designed to be secure, meaning that only authorized operations are performed.
+```text
+VECTIS source
+    ↓
+Lexer
+    ↓
+Parser
+    ↓
+AST
+    ↓
+Semantic analyzer
+    ↓
+Execution graph (IR)
+    ↓
+Deterministic runtime
+    ↓
+Optional explicit capability adapters / handlers
 ```
 
-## Architecture contract completion
+## Lexer
 
-### Lexer
+`vectis.lexer` converts characters into typed tokens while preserving file, line, and column information. Unsupported characters and malformed strings fail with structured `LEXxxx` diagnostics.
 
-The lexer is the first deterministic language stage. It converts VECTIS source text into canonical tokens while preserving source positions for later parser and diagnostic use.
+## Parser
 
-### Parser
+`vectis.parser` converts tokens into immutable AST nodes. Parsing has no external side effects and does not execute VECTIS expressions.
 
-The parser consumes lexer tokens and produces the canonical VECTIS abstract syntax tree without executing source.
+## AST and expressions
 
-### Semantic
+The AST represents declarations, statements, branches, assertions, references, literals, unary/binary expressions, and deterministic built-in function calls. `let` declarations represent computed values without adding imperative mutation.
 
-Semantic analysis validates declarations, references, types, and language constraints before an execution graph is produced.
+## Semantic analysis
 
-### Execution Graph
+`vectis.semantic` validates declarations, references, selected expression types, built-in existence/arity, boolean conditions, assertions, and confidence values before graph generation. Semantic failures use `SEMxxx` diagnostics.
 
-The execution graph is the typed deterministic intermediate representation scheduled by the runtime.
+## Execution graph
 
-### Capability
+`vectis.ir.ExecutionGraph` is the runtime boundary. Graph nodes represent operations and values; edges represent dependencies and true/false branch control. The graph rejects cycles and serializes deterministically.
 
-Capabilities explicitly authorize external effects. Unavailable capabilities are denied rather than inferred.
+## Runtime
+
+`vectis.runtime.Runtime` executes nodes in deterministic topological order. Expressions are evaluated from canonical metadata plus values produced by dependency nodes. Runtime state is explicit: succeeded, failed, skipped, or blocked.
+
+## Capabilities and adapters
+
+Capabilities are named runtime authority, not ambient permission. `require` and `request` nodes check an explicit capability set. Filesystem, process, and HTTP adapters impose their own containment, allowlist, scheme, and timeout boundaries.
+
+## VECTIS Studio
+
+`vectis studio` runs a local-first browser application backed by the same lexer/parser/semantic/compiler/runtime modules as the CLI. Studio is an interface to the canonical toolchain, not a second implementation of the language.
+
+## Design priorities
+
+1. **Determinism** — stable parsing, graph generation, serialization, and scheduling.
+2. **Inspectability** — users can inspect tokens, AST, graph, diagnostics, runtime states, and values.
+3. **Explicit authority** — language syntax alone does not grant external effects.
+4. **Small semantic surface** — built-ins are pure; external effects are kept at adapter boundaries.
+5. **Fail closed** — malformed source, unavailable capabilities, failed assertions, and invalid graph structures stop or block execution rather than being inferred away.

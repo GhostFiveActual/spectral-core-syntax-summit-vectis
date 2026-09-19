@@ -52,7 +52,7 @@ Granting HTTP capability does not grant process execution, shell access, filesys
 
 ## Security and conformance coverage
 
-RUN-005 tests verify the structured request model, explicit method handling, binary request bodies, request headers, JSON request and response handling, HTTP status handling, redirect visibility, URL scheme denial, hostname validation, deterministic repeated execution, timeout enforcement, and maximum-timeout validation.
+The automated adapter tests verify the structured request model, explicit method handling, binary request bodies, request headers, JSON request and response handling, HTTP status handling, redirect visibility, URL scheme denial, hostname validation, deterministic repeated execution, timeout enforcement, and maximum-timeout validation.
 
 ## Architectural boundary
 

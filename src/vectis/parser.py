@@ -4,12 +4,15 @@ from dataclasses import replace
 
 from vectis.ast import (
     AnalyzeDeclaration,
+    AssertStatement,
     BinaryExpression,
     Block,
     BooleanLiteral,
+    CallExpression,
     CitationsStatement,
     ConfidenceStatement,
     Expression,
+    LetDeclaration,
     Mission,
     NumberLiteral,
     Program,
@@ -43,9 +46,9 @@ class Parser:
         ("||",),
         ("&&",),
         ("==", "!="),
-        (">=", "<="),
+        (">", ">=", "<", "<="),
         ("+", "-"),
-        ("*", "/"),
+        ("*", "/", "%"),
     )
     _UNARY_OPERATORS = frozenset({"!", "+", "-"})
 
@@ -75,6 +78,17 @@ class Parser:
 
         return Program(span=span, statements=tuple(statements))
 
+    def parse_expression_only(self) -> Expression:
+        expression = self._parse_expression()
+        if not self._at_end():
+            token = self._current()
+            self._error(
+                f"unexpected token after expression: {token.value!r}",
+                token=token,
+                code=DiagnosticCode.SYN_EXPECTED_TOKEN,
+            )
+        return expression
+
     def _parse_statement(self):
         token = self._current()
 
@@ -101,9 +115,11 @@ class Parser:
         dispatch = {
             "mission": self._parse_mission,
             "source": self._parse_source,
+            "let": self._parse_let,
             "analyze": self._parse_analyze,
             "require": self._parse_require,
             "request": self._parse_request,
+            "assert": self._parse_assert,
             "publish": self._parse_publish,
             "citations": self._parse_citations,
             "confidence": self._parse_confidence,
@@ -142,6 +158,17 @@ class Parser:
             value=value,
         )
 
+    def _parse_let(self) -> LetDeclaration:
+        start = self._expect("keyword", "let")
+        name = self._expect("identifier", description="value name")
+        value = self._parse_expression()
+        end = self._expect("punctuation", ";")
+        return LetDeclaration(
+            span=self._cover(start.span, end.span),
+            name=name.value,
+            value=value,
+        )
+
     def _parse_analyze(self) -> AnalyzeDeclaration:
         start = self._expect("keyword", "analyze")
         name = self._expect("identifier", description="analysis name")
@@ -169,6 +196,15 @@ class Parser:
         return RequestStatement(
             span=self._cover(start.span, end.span),
             capability=capability,
+        )
+
+    def _parse_assert(self) -> AssertStatement:
+        start = self._expect("keyword", "assert")
+        condition = self._parse_expression()
+        end = self._expect("punctuation", ";")
+        return AssertStatement(
+            span=self._cover(start.span, end.span),
+            condition=condition,
         )
 
     def _parse_publish(self) -> PublishStatement:
@@ -320,6 +356,21 @@ class Parser:
             if token.value == "false":
                 return BooleanLiteral(span=token.span, value=False)
 
+            if self._match("punctuation", "(") is not None:
+                arguments: list[Expression] = []
+
+                if not self._check("punctuation", ")"):
+                    arguments.append(self._parse_expression())
+                    while self._match("punctuation", ",") is not None:
+                        arguments.append(self._parse_expression())
+
+                closing = self._expect("punctuation", ")")
+                return CallExpression(
+                    span=self._cover(token.span, closing.span),
+                    name=token.value,
+                    arguments=tuple(arguments),
+                )
+
             return Reference(span=token.span, name=token.value)
 
         opening = self._match("punctuation", "(")
@@ -367,7 +418,6 @@ class Parser:
     def _match(self, token_type: str, value: str | None = None) -> Token | None:
         if not self._check(token_type, value):
             return None
-
         return self._advance()
 
     def _expect(
@@ -438,3 +488,8 @@ class Parser:
 def parse(source: str, file: str = "<memory>") -> Program:
     tokens = Lexer(source, file=file).tokenize()
     return Parser(tokens, file=file).parse_program()
+
+
+def parse_expression(source: str, file: str = "<expression>") -> Expression:
+    tokens = Lexer(source, file=file).tokenize()
+    return Parser(tokens, file=file).parse_expression_only()

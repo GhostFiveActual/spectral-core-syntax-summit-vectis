@@ -1,75 +1,49 @@
-# Semantic Model
+# VECTIS Semantic Model — 0.1
 
-## Declarations and References
+## Purpose
 
-VECTIS supports the following declaration forms:
+Semantic analysis runs after parsing and before graph generation. A program with semantic diagnostics does not produce an execution graph.
 
-- `mission` - Declares a top-level workflow unit
-- `source` - Declares data sources
-- `analyze` - Declares analysis steps
-- `when`/`otherwise` - Declares conditional branches
-- `require` - Declares dependencies
-- `request` - Declares external requests
-- `publish` - Declares output actions
-- `citations` - Declares reference sources
-- `confidence` - Declares probabilistic metrics
+## Declarations
 
-References must resolve to valid declarations through name resolution and scope analysis.
+`source`, `let`, and `analyze` introduce names into the declaration environment. Duplicate names are rejected with `SEM002`.
 
-## Value Categories
+References must resolve to an earlier visible declaration. Unresolved references produce `SEM001`.
 
-VECTIS values fall into these categories:
+## Value types
 
-- **Literal** - Direct value representation (strings, numbers, booleans)
-- **Expression** - Computed value from operations
-- **Reference** - Symbolic reference to a declaration
-- **Capability** - Explicitly enabled external functionality
-- **Graph Node** - Executable unit in the execution graph
-- **Diagnostic** - Error or warning information
+The semantic analyzer tracks four coarse types:
 
-## Basic Type Model
+- `string`
+- `number`
+- `boolean`
+- `unknown`
 
-VECTIS has the following primitive types:
+`unknown` is used when a value may be supplied by a runtime handler or cannot be statically inferred.
 
-- `string` - UTF-8 encoded text
-- `number` - Floating-point or integer values
-- `boolean` - Logical true/false
-- `unit` - Nullary value with no type
-- `any` - Polymorphic type for untyped values
+## Built-in functions
 
-Type inference follows structural subtyping with explicit type annotations as fallback.
+Function calls resolve against the deterministic built-in registry.
 
-## Capability Semantics
+- Unknown function: `SEM003`
+- Invalid argument count: `SEM004`
 
-Capabilities are explicit, opt-in features that:
+Return types for standard built-ins are known to the analyzer and feed later expression checks.
 
-1. Must be declared in the capability adapters
-2. Are scoped to specific execution contexts
-3. Provide controlled access to external systems
-4. Are validated through capability adapters
-5. Are explicitly enabled through `require` or `request`
+## Selected type rules
 
-## Execution Dependencies
+- `when` conditions must be boolean or `unknown`.
+- `assert` conditions must be boolean or `unknown`.
+- `confidence` must be numeric or `unknown`.
 
-Execution follows these dependency rules:
+Other expression operand checks are also enforced by the deterministic evaluator when values are resolved.
 
-- All dependencies must be explicitly declared
-- Execution order is determined by the semantic analyzer
-- Capabilities are resolved at runtime
-- Diagnostic information is attached to execution nodes
-- Execution graphs are validated for consistency
+## Graph eligibility
 
-## Semantic Invariants
+Compilation occurs only when semantic diagnostics are empty. References become dependency edges. Branch bodies become explicit true/false branch edges. Assertions become dependency guards for statements that follow them in the same block.
 
-VECTIS enforces these invariants:
+## Runtime expression semantics
 
-1. All declarations must be uniquely named
-2. References must resolve to valid declarations
-3. Capabilities must be explicitly enabled
-4. Execution order must be deterministic
-5. All values must have a valid type
-6. Diagnostic information must be attached to source spans
-7. All capabilities must be validated through adapters
-8. Execution graphs must be acyclic and well-formed
-9. All semantic analysis must be performed before execution
-10. All diagnostics must include source location information
+The runtime resolves each node's serialized canonical expression against values already produced by dependency nodes. This supports dynamic reference evaluation rather than relying only on compile-time literal folding.
+
+Pure function calls, arithmetic, comparisons, and boolean operations therefore work with actual runtime node values while preserving deterministic topological scheduling.

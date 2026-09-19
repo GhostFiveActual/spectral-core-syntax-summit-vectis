@@ -1,46 +1,50 @@
-```markdown
-# VECTIS Release Candidate 0.0.1
+# VECTIS Changelog
 
-## Overview
+## 0.1.0.dev0 — in development
 
-This document outlines the release candidate for VECTIS version 0.0.1. The release candidate has been thoroughly tested and is ready for final review.
+### Repository
 
-## Testing
+- Removed autonomous competition/controller/submission build artifacts from the public product tree.
+- Moved historical v0.0.1 release notes under `docs/release/history/`.
+- Reworked the quality gate around the public product boundary.
 
-The complete test suite has been executed, and all tests have passed. The test suite includes unit tests, integration tests, and end-to-end tests.
+### Language
 
-## Examples
+- Added `let` deterministic value declarations.
+- Added pure built-in function-call expressions.
+- Added `>`, `<`, and `%` operators.
+- Added `assert` mission guards.
+- Added semantic diagnostic codes `SEM001`–`SEM005`.
+- Added runtime evaluation of expressions using actual dependency values.
+- Added resolved node values to runtime results.
+- Gated every node in conditional branches explicitly.
 
-The official examples have been reviewed, and they pass without any issues.
+### CLI
 
-## Documentation
+Added:
 
-The documentation has been reviewed, and it matches the implementation. All sections are up-to-date and accurately reflect the current state of the project.
+- `tokens`
+- `inspect`
+- `fmt`
+- `builtins`
+- `capabilities`
+- `doctor`
+- `studio`
+- `app`
 
-## Security
+`run` now also accepts repeatable `--capability NAME` grants.
 
-No unresolved critical security findings have been identified.
+### Application
 
-## Accessibility
+- Added packaged VECTIS Studio.
+- Added local API for check/parse/plan/run/format.
+- Added execution graph visualization, runtime inspector, diagnostics, AST/plan views, examples, formatter, and built-in reference.
 
-No unresolved major accessibility findings have been identified.
+## 0.0.1 — engineering baseline
 
-## Release Notes
-
-### New Features
-
-- Initial release of VECTIS with basic syntax and functionality.
-
-### Improvements
-
-- Improved error handling and diagnostics.
-- Enhanced documentation for better user understanding.
-
-### Bug Fixes
-
-- Fixed several bugs related to parsing and execution.
-
-## Conclusion
-
-The release candidate for VECTIS version 0.0.1 has been thoroughly reviewed and is ready for final release. All acceptance criteria have been met, and the project is in a stable state.
-```
+- Initial deterministic lexer/parser/AST/semantic/compiler/runtime pipeline.
+- Explicit execution graph and branch edges.
+- Filesystem, process, and HTTP capability adapters.
+- Source-reference condition runtime fix.
+- Packaged CLI with check/parse/plan/run.
+- Frozen engineering release tag and artifacts.

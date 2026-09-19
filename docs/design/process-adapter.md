@@ -38,10 +38,10 @@ The public capability identifier is `process`. Granting this capability does not
 
 ## Security properties
 
-RUN-004 tests verify explicit executable allowlisting, denial of unknown aliases, rejection of relative executable paths, structured arguments, rejection of command strings, no shell interpolation, deterministic stdout and stderr capture, structured nonzero exits, repeatable execution, parent-environment isolation, explicit environment access, timeout enforcement, maximum-timeout validation, timeout error typing, and process denial error typing.
+The automated adapter tests verify explicit executable allowlisting, denial of unknown aliases, rejection of relative executable paths, structured arguments, rejection of command strings, no shell interpolation, deterministic stdout and stderr capture, structured nonzero exits, repeatable execution, parent-environment isolation, explicit environment access, timeout enforcement, maximum-timeout validation, timeout error typing, and process denial error typing.
 
 ## Architectural boundary
 
-The process adapter performs controlled process execution only. Filesystem effects remain the responsibility of the filesystem adapter. HTTP access belongs to the separate HTTP adapter task.
+The process adapter performs controlled process execution only. Filesystem effects remain the responsibility of the filesystem adapter. HTTP access belongs to the separate HTTP adapter.
 
 The adapter must deny any executable that is not present in the explicit allowlist.

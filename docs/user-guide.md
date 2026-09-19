@@ -1,185 +1,206 @@
-```markdown
 # VECTIS User Guide
 
-## Installation
+## Install
 
-To install VECTIS, follow these steps:
+For local development, create an isolated environment and install the package:
 
-1. Ensure you have Python 3.8 or later installed.
-2. Run the following command to install VECTIS using pip:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
 
-   ```sh
-   pip install vectis
-   ```
+A packaged release can be installed from its wheel with `python -m pip install <wheel>`.
 
-## Tutorial
+VECTIS is a deterministic language for expressing inspectable automation missions. Source is validated and compiled into an execution graph before the runtime schedules nodes.
 
-This tutorial will guide you through the basics of using VECTIS.
-
-### Step 1: Writing a Simple Program
-
-Create a new file named `example.vectis` and add the following code:
+## 1. Mission structure
 
 ```vectis
-program example {
-    source my_source {
-        data = "Hello, VECTIS!"
-    }
-
-    mission my_mission {
-        request my_request {
-            source = my_source
-        }
-    }
+mission "Example" {
+    source input 42;
+    let doubled input * 2;
+    publish doubled;
 }
 ```
 
-### Step 2: Compiling the Program
+A file may contain multiple statements, including mission blocks. Mission names are strings.
 
-Run the following command to compile your program:
+## 2. Declarations
 
-```sh
-vectis compile example.vectis
-```
+### `source`
 
-### Step 3: Running the Compiled Program
-
-Run the following command to execute the compiled program:
-
-```sh
-vectis run example.vectis
-```
-
-## Syntax Reference
-
-### Program
-
-A program is defined using the `program` keyword followed by the program name and a block of statements.
+Declares an input or initial value:
 
 ```vectis
-program example {
-    // Statements go here
+source score 93;
+source enabled true;
+source label "Ghost Five";
+```
+
+### `let`
+
+Declares a deterministic computed value:
+
+```vectis
+let passing score >= 80;
+let title concat(upper(label), " // VECTIS");
+```
+
+References create explicit execution-graph dependency edges.
+
+### `analyze`
+
+Preserves the analysis-node contract for workflows that attach an explicit runtime handler:
+
+```vectis
+analyze findings;
+analyze score raw_score;
+```
+
+## 3. Expressions
+
+VECTIS supports strings, numbers, booleans, references, function calls, parentheses, unary operators, and binary operators.
+
+```vectis
+let result (base + bonus) * 2;
+let approved enabled && score >= 80;
+let label upper(trim(raw_label));
+```
+
+Operator precedence, lowest to highest:
+
+1. `||`
+2. `&&`
+3. `==`, `!=`
+4. `>`, `>=`, `<`, `<=`
+5. `+`, `-`
+6. `*`, `/`, `%`
+7. unary `!`, `+`, `-`
+8. primary values and function calls
+
+## 4. Built-in functions
+
+Use `vectis builtins` for the machine-readable registry.
+
+String/value functions:
+
+- `upper(text)`
+- `lower(text)`
+- `trim(text)`
+- `length(text)`
+- `concat(value, ...)`
+- `contains(text, part)`
+- `starts_with(text, prefix)`
+- `ends_with(text, suffix)`
+
+Numeric functions:
+
+- `abs(number)`
+- `round(number)`
+- `round(number, digits)`
+- `min(number, ...)`
+- `max(number, ...)`
+
+Conversions:
+
+- `string(value)`
+- `number(value)`
+- `boolean(value)`
+
+Built-ins are pure and deterministic. They do not acquire capabilities.
+
+## 5. Conditions
+
+```vectis
+when ready && score >= 90 {
+    publish "ship";
+} otherwise {
+    publish "review";
 }
 ```
 
-### Source Declaration
+Every node in each branch receives an explicit branch edge from the condition node. The inactive branch is skipped deterministically.
 
-A source declaration defines a data source.
+## 6. Assertions
 
-```vectis
-source my_source {
-    data = "Hello, VECTIS!"
-}
-```
-
-### Mission Declaration
-
-A mission declaration defines a task to be executed.
+Use `assert` for mission invariants:
 
 ```vectis
-mission my_mission {
-    request my_request {
-        source = my_source
-    }
-}
+assert score >= 70;
+publish "score accepted";
 ```
 
-### Request Declaration
+A false assertion fails its node. Subsequent nodes in the same block are dependency-gated by that assertion and become blocked.
 
-A request declaration specifies the source to be used.
+## 7. Outputs and metadata statements
 
 ```vectis
-request my_request {
-    source = my_source
-}
+publish result;
+confidence 0.94;
+citations [primary_source, secondary_source];
 ```
 
-## Compiler Explanation
+`confidence` must evaluate to a number.
 
-The VECTIS compiler processes a program and generates an execution graph.
-
-### Semantic Analysis
-
-The compiler performs semantic analysis to ensure the program is valid.
-
-### Graph Construction
-
-The compiler constructs an execution graph based on the program's structure.
-
-## Runtime Explanation
-
-The VECTIS runtime executes the execution graph.
-
-### Node Execution
-
-Nodes in the graph are executed in a topological order.
-
-### Error Handling
-
-The runtime handles errors and provides diagnostics.
-
-## Examples
-
-### Example 1: Simple Program
+## 8. Capabilities
 
 ```vectis
-program example {
-    source my_source {
-        data = "Hello, VECTIS!"
-    }
-
-    mission my_mission {
-        request my_request {
-            source = my_source
-        }
-    }
-}
+require "filesystem";
+request "http";
 ```
 
-### Example 2: Complex Program
+Capabilities are explicit runtime authority. The standard names are `filesystem`, `process`, and `http`.
 
-```vectis
-program complex {
-    source source1 {
-        data = "Data from source 1"
-    }
+The CLI can grant a named capability for validation/runtime gating:
 
-    source source2 {
-        data = "Data from source 2"
-    }
-
-    mission mission1 {
-        request request1 {
-            source = source1
-        }
-    }
-
-    mission mission2 {
-        request request2 {
-            source = source2
-        }
-    }
-}
+```bash
+vectis run --capability filesystem mission.vectis
 ```
 
-## Troubleshooting
+Granting a capability name does not itself perform I/O. Actual external effects require an explicit runtime handler/adapter integration.
 
-### Common Issues
+## 9. Diagnostics
 
-- **Compilation Errors**: Check the diagnostics for errors in your program.
-- **Runtime Errors**: Check the runtime logs for errors during execution.
+Diagnostics include a stable code, severity, message, and source span. Current code families include:
 
-### Solutions
+- `LEXxxx` — lexical errors
+- `SYNxxx` — syntax errors
+- `SEMxxx` — semantic errors
 
-- **Fix Errors**: Address the errors reported by the compiler or runtime.
-- **Update VECTIS**: Ensure you are using the latest version of VECTIS.
-- **Consult Documentation**: Refer to the VECTIS documentation for more information.
+Examples include unresolved references, duplicate declarations, unknown built-in functions, invalid function arity, and selected type mismatches.
+
+## 10. CLI workflow
+
+A useful development loop is:
+
+```bash
+vectis fmt --check mission.vectis
+vectis check mission.vectis
+vectis inspect mission.vectis
+vectis run --dry-run mission.vectis
+vectis run mission.vectis
 ```
 
-This user guide provides a comprehensive overview of installing, using, and troubleshooting VECTIS. It includes installation instructions, a tutorial, syntax reference, compiler and runtime explanations, examples, and troubleshooting tips.
+## 11. VECTIS Studio
 
-## Language and runtime contract
+Launch with:
 
-This guide documents the stable VECTIS user-facing contract. VECTIS source is parsed and compiled deterministically, and runtime operations remain constrained by explicit capability authorization. Capabilities define which external effects are available to a workflow; unavailable authority is denied rather than inferred. Diagnostics remain explicit and machine-readable, while execution uses the canonical compiler, execution graph, runtime, and adapters.
+```bash
+vectis studio
+```
 
-Contract concepts: capability.
+Studio exposes the source editor, diagnostics, execution graph, raw plan, AST, runtime states, runtime values, examples, formatter, and built-in reference through a local-first UI.
+
+## 12. Current scope
+
+The 0.1 language line deliberately does **not** yet include:
+
+- user-defined function declarations,
+- modules/imports,
+- loops,
+- asynchronous tasks,
+- general collection/list values outside the existing `citations [...]` statement,
+- implicit adapter execution from language syntax.
+
+Those are expansion areas for later releases and should be added without weakening deterministic planning or capability boundaries.

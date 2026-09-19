@@ -10,7 +10,7 @@ from vectis.parser import parse
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "examples" / "demo" / "demo.vectis"
 RELEASE = ROOT / "docs" / "release" / "RELEASE.md"
-SUBMISSION_DIR = ROOT / "docs" / "submission"
+STUDIO = ROOT / "src" / "vectis" / "studio_assets" / "index.html"
 
 
 def _demo_source() -> str:
@@ -76,17 +76,9 @@ class TestReleaseCandidate(unittest.TestCase):
             second.graph.to_json(),
         )
 
-    def test_submission_package_remains_present(self):
-        for name in (
-            "devpost.md",
-            "checklist.md",
-            "video-script.md",
-            "demo.md",
-        ):
-            with self.subTest(name=name):
-                path = SUBMISSION_DIR / name
-                self.assertTrue(path.is_file())
-                self.assertGreater(path.stat().st_size, 0)
+    def test_studio_surface_is_packaged(self):
+        self.assertTrue(STUDIO.is_file())
+        self.assertGreater(STUDIO.stat().st_size, 0)
 
     def test_demo_uses_current_language_syntax(self):
         source = _demo_source()

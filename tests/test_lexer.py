@@ -272,8 +272,6 @@ class TestLexer(TestCase):
 
     def test_bare_operator_prefixes_are_errors(self):
         for operator in (
-            "<",
-            ">",
             "=",
             "&",
             "|",

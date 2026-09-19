@@ -2,156 +2,60 @@
 
 ## Assets
 
-The primary assets protected by VECTIS are:
+VECTIS protects:
 
-- host files and project data;
-- process-execution authority;
-- network-access authority;
-- execution-graph integrity;
-- deterministic language semantics;
-- capability declarations;
-- repository history and protected records; and
-- autonomous-controller state.
+- source integrity,
+- deterministic compilation,
+- execution-graph integrity,
+- explicit capability boundaries,
+- adapter allowlists and containment rules,
+- diagnostic/source-location integrity,
+- local Studio access boundary.
 
 ## Trust boundaries
 
-### Source to compiler
+### Source → compiler
 
-VECTIS source is untrusted input until it passes lexical, syntactic, and
-semantic validation.
+Untrusted or malformed VECTIS source must be rejected through lexer, parser, or semantic diagnostics rather than interpreted as Python or shell code.
 
-The parser does not interpret arbitrary Python. The compiler translates
-the validated AST into the VECTIS execution graph.
+### Graph → runtime
 
-### Graph to runtime
+The immutable execution graph defines scheduling and branch relationships. Runtime expression evaluation consumes only the canonical expression subset and explicit node-value environment.
 
-The execution graph is typed. `NodeKind` is closed rather than accepting
-arbitrary strings.
+### Runtime → adapters
 
-Runtime operations remain subject to capability checks and explicit
-handlers.
+Filesystem, process, and HTTP effects are not implicit language privileges. They require explicit adapter construction/configuration and named capability availability.
 
-### Runtime to adapters
+### Browser → Studio local server
 
-Filesystem, process, and HTTP side effects cross an explicit adapter
-boundary.
+Studio binds to loopback by default. Remote binding requires explicit opt-in. API requests are size-bounded JSON and compiler output is rendered without HTML injection.
 
-Adapters are responsible for enforcing the narrower authority granted to
-each external operation.
-
-### Autonomous model to repository
-
-Model-generated content is untrusted until transport validation,
-task-file boundary validation, task acceptance, and repository quality
-checks succeed.
-
-Repeated deterministic failures place the controller into a persistent
-blocked state.
-
-## Threats and controls
-
-### Arbitrary command execution
-
-Threat: DSL or generated data becomes shell syntax.
-
-Controls:
-
-- structured process arguments;
-- rejection of string commands;
-- executable allowlisting;
-- rejection of relative executable allowlist entries; and
-- no `shell=True` process execution.
-
-### Environment leakage
-
-Threat: child processes inherit unrelated host secrets or configuration.
-
-Control: the process adapter does not implicitly inherit the parent
-environment.
-
-### Filesystem authority escape
-
-Threat: a workflow accesses data outside its intended filesystem
-authority.
-
-Control: filesystem effects are mediated by the filesystem adapter and
-its configured path authority.
-
-### Network authority expansion
-
-Threat: a workflow silently gains unrestricted network behavior.
-
-Controls:
-
-- explicit HTTP adapter;
-- capability-mediated runtime authority;
-- HTTP/HTTPS policy;
-- bounded timeouts;
-- disabled implicit proxies; and
-- disabled redirects.
-
-### Capability bypass
-
-Threat: execution proceeds without required authority.
-
-Controls:
-
-- explicit capability declarations and registry;
-- capability checks before protected execution; and
-- denial of unavailable capabilities.
-
-### Graph-type injection
-
-Threat: arbitrary strings create new execution semantics.
-
-Control: `NodeKind` is a closed enumeration and rejects unknown values.
+## Primary threats and controls
 
 ### Dynamic-code injection
 
-Threat: VECTIS content is evaluated as Python.
+Control: no Python `eval`/`exec`; process adapter never enables shell interpolation; Studio JavaScript avoids `eval`/`new Function`.
 
-Controls:
+### Filesystem escape
 
-- deterministic parser/compiler pipeline; and
-- runtime implementation does not use Python `eval()` or `exec()` for
-  VECTIS execution.
+Control: filesystem paths are canonically resolved and must remain under explicit allowed roots.
 
-### Autonomous repair loop
+### Arbitrary process execution
 
-Threat: a failing model repeatedly mutates the repository indefinitely.
+Control: process executables require explicit absolute-path allowlisting; command arguments are structured sequences; parent environment is not implicitly inherited.
 
-Controls:
+### Network authority expansion
 
-- bounded repair counter;
-- persistent `blocked` state at the threshold;
-- blocked-task and block-reason recording;
-- clean process exit; and
-- startup refusal while blocked.
+Control: HTTP behavior is isolated behind the explicit HTTP adapter with scheme and timeout restrictions.
 
-### Repository corruption
+### Branch ambiguity
 
-Threat: autonomous work modifies unrelated or protected artifacts.
+Control: branch edges are explicit in the graph and every node in a branch is condition-gated.
 
-Controls:
+### Failed invariant ignored
 
-- task file boundaries;
-- deterministic quality gates;
-- protected project records;
-- clean-worktree checks;
-- preservation of task WIP for diagnosis; and
-- no autonomous push.
+Control: `assert` failures create runtime failures and dependency-block later statements in the same block.
 
-## Residual threats
+### Studio exposed unintentionally
 
-No local software control eliminates risk from vulnerabilities in the
-host operating system, Python runtime, external network services, or
-authorized executables themselves.
-
-Adapter policy and capability policy therefore remain security-critical
-configuration and must not be widened implicitly.
-
-## Review rule
-
-A change that expands filesystem, process, HTTP, capability, runtime, or
-controller authority requires corresponding security tests and threat
-model review before final release.
+Control: non-loopback binding is denied unless `--allow-remote` is set.

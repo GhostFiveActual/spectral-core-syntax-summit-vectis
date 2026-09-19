@@ -32,7 +32,7 @@ When multiple roots are explicitly granted, an absolute path may resolve beneath
 
 ## Tested security properties
 
-RUN-003 tests cover canonical roots, duplicate-root normalization, multiple roots, relative and absolute allowed access, parent traversal denial, string-prefix collision denial, absolute escape denial, symbolic-link escape denial, text read and write operations, invalid path types, non-text write rejection, and the public filesystem capability name.
+The automated adapter tests cover canonical roots, duplicate-root normalization, multiple roots, relative and absolute allowed access, parent traversal denial, string-prefix collision denial, absolute escape denial, symbolic-link escape denial, text read and write operations, invalid path types, non-text write rejection, and the public filesystem capability name.
 
 ## Architectural boundary
 

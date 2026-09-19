@@ -1,33 +1,42 @@
 # VECTIS Documentation
 
-This directory contains the language, architecture, design, usability, playground, release, and historical submission documentation for VECTIS.
+The documentation tree is organized around the public VECTIS product.
 
 ## Start here
 
-- [Quickstart](quickstart.md) — installation and first commands.
-- [User guide](user-guide.md) — language usage, syntax, diagnostics, capabilities, and runtime workflow.
-- [Architecture overview](architecture/overview.md) — the system-level model.
-- [Compiler pipeline](architecture/compiler-pipeline.md) — lexer through execution graph.
-- [Runtime](architecture/runtime.md) — deterministic execution behavior.
-- [Security](architecture/security.md) — capability and adapter boundaries.
-- [Grammar](spec/grammar.md) — canonical language syntax.
+- [Quickstart](quickstart.md) — install, validate, plan, run, and launch Studio.
+- [User guide](user-guide.md) — language workflow, values, functions, assertions, branches, capabilities, and CLI.
+- [Demo](demo.md) — canonical demonstration path.
+- [VECTIS Studio](studio.md) — local-first application architecture and operation.
+- [Product roadmap](../ROADMAP.md) — planned language, adapter, and Studio evolution.
 
-## Design references
+## Language specification
 
-The `design/` directory contains implementation contracts and rationale for individual language/toolchain concerns.
+- [Grammar](spec/grammar.md) — normative concrete grammar.
+- [Lexical specification](spec/lexical-spec.md) — tokens, identifiers, operators, comments, strings, and numbers.
+- [Semantic model](spec/semantic-model.md) — declarations, references, built-ins, type rules, and graph eligibility.
 
-## Playground
+## Architecture
 
-The `playground/` directory contains the local browser playground contract and assets. The Python compiler/runtime remains canonical.
+- [Overview](architecture/overview.md)
+- [Compiler pipeline](architecture/compiler-pipeline.md)
+- [Runtime](architecture/runtime.md)
+- [Security](architecture/security.md)
+- [Threat model](architecture/threat-model.md)
+
+## Engineering design
+
+`design/` contains deeper component contracts for the AST, parser, semantic analyzer, IR, runtime, diagnostics, CLI, capability model, and adapters.
+
+## Quality
+
+`qa/` documents language conformance and security review. The executable source of truth is the automated test suite plus `tools/quality-gate.sh`.
 
 ## Releases
 
-The `release/` directory contains release records and changelog material. Git tags and GitHub Releases are the distributable release boundary.
+- [Current development release record](release/RELEASE.md)
+- [Changelog](release/CHANGELOG.md)
+- [Public-release checklist](release/PUBLIC_RELEASE_CHECKLIST.md)
+- [v0.0.1 engineering-baseline notes](release/history/v0.0.1.md)
 
-## Historical provenance
-
-The `submission/` directory records original project/submission material. It is retained for provenance and is not the primary product documentation surface.
-
-## Brand
-
-See [Ghost Five // Spectral Core // VECTIS identity](brand/identity.md).
+Internal autonomous-build records and original competition/submission artifacts are intentionally kept outside the public product repository.

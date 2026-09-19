@@ -1,103 +1,50 @@
-```markdown
 # VECTIS Error Message Guidelines
 
-## Introduction
+Diagnostics are part of the public language/tooling contract.
 
-This document outlines the guidelines for creating and maintaining error messages in the VECTIS language. Error messages are critical for user experience and should be clear, concise, and accessible. This document ensures that all error messages adhere to a consistent format and provide actionable guidance to users.
+## Required fields
 
-## Error Message Structure
+Every structured diagnostic contains:
 
-An error message should include the following components:
+- stable code,
+- severity,
+- human-readable message,
+- canonical source span.
 
-1. **Code**: A unique code that identifies the type of error.
-2. **Severity**: The severity level of the error (e.g., error, warning).
-3. **Message**: A human-readable message that explains the error.
-4. **Source Span**: Information about the location of the error in the source code.
+Human-rendered exceptions retain the compatibility shape:
 
-## Error Message Format
-
-Error messages should be formatted in a consistent manner to ensure clarity and consistency across the VECTIS language. The format should be:
-
-```
-[Code] [Severity]: [Message] [Source Span]
+```text
+file:line:column: message
 ```
 
-### Example
+Machine-readable output includes the code/severity/message and source start/end positions.
 
-```
-LEX001 error: Unterminated string literal at file:line:column
-```
+## Code families
 
-## Error Message Guidelines
+| Family | Purpose |
+| --- | --- |
+| `LEXxxx` | lexical/tokenization failures |
+| `SYNxxx` | parser/grammar failures |
+| `SEMxxx` | semantic/reference/type/function failures |
+| `CAPxxx` | capability validation/authorization failures |
 
-1. **Code**: Use a unique code for each type of error. The code should be a combination of the error type and a sequential number.
-2. **Severity**: Use the appropriate severity level for each error. Errors that prevent the program from continuing should be marked as `error`, while warnings should be marked as `warning`.
-3. **Message**: The message should be clear and concise. It should explain the error and provide actionable guidance to the user.
-4. **Source Span**: Include the source span information to help the user locate the error in their source code.
+Current examples include:
 
-## Error Message Examples
+- `LEX001` unterminated string,
+- `SYN003` missing required token/delimiter,
+- `SEM001` unresolved reference,
+- `SEM003` unknown built-in function,
+- `SEM005` type mismatch,
+- `CAP001` unavailable required capability.
 
-### Example 1: Unterminated String Literal
+## Writing rules
 
-```
-LEX001 error: Unterminated string literal at file:1:10
-```
+Messages should be:
 
-### Example 2: Unsupported Bare Operator
+1. specific about the violated contract,
+2. deterministic for equivalent input,
+3. concise enough for CLI output,
+4. complete enough to render in Studio without extra internal context,
+5. free of implementation details that users cannot act on.
 
-```
-LEX002 error: Unsupported bare operator at file:2:5
-```
-
-### Example 3: Unrecognized Character
-
-```
-LEX003 error: Unrecognized character at file:3:3
-```
-
-### Example 4: Expected Statement
-
-```
-SYN001 error: Expected statement at file:4:1
-```
-
-### Example 5: Standalone Otherwise
-
-```
-SYN002 error: Standalone otherwise at file:5:1
-```
-
-### Example 6: Expected Required Token
-
-```
-SYN003 error: Expected required token at file:6:10
-```
-
-### Example 7: Expected Expression
-
-```
-SYN004 error: Expected expression at file:7:5
-```
-
-### Example 8: Unclosed Block
-
-```
-SYN005 error: Unclosed block at file:8:1
-```
-
-### Example 9: Malformed Citation Collection
-
-```
-SYN006 error: Malformed citation collection at file:9:1
-```
-
-### Example 10: Reserved Keyword Cannot Begin a Statement
-
-```
-SYN007 error: Reserved keyword cannot begin a statement at file:10:1
-```
-
-## Conclusion
-
-This document outlines the guidelines for creating and maintaining error messages in the VECTIS language. By following these guidelines, we can ensure that all error messages are clear, concise, and accessible, improving the user experience and reducing the likelihood of errors.
-```
+Do not reuse an existing stable code for a different meaning. New error classes receive a new code while established meanings remain frozen.

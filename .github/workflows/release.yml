@@ -20,7 +20,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.13"
           cache: pip
 
       - name: Install tooling
@@ -41,15 +41,25 @@ jobs:
           set -euo pipefail
 
           python -m venv /tmp/vectis-release-smoke
-
           WHEEL="$(find dist -maxdepth 1 -name 'vectis_lang-*.whl' -print -quit)"
           test -n "$WHEEL"
 
           /tmp/vectis-release-smoke/bin/python -m pip install "$WHEEL"
 
-          cd /tmp
-          /tmp/vectis-release-smoke/bin/vectis --version
-          /tmp/vectis-release-smoke/bin/vectis --help >/dev/null
+          CLI=/tmp/vectis-release-smoke/bin/vectis
+          "$CLI" --version
+          "$CLI" doctor
+          "$CLI" builtins >/dev/null
+          "$CLI" capabilities >/dev/null
+          "$CLI" --help >/dev/null
+
+          /tmp/vectis-release-smoke/bin/python - <<'PY'
+          from importlib.resources import files
+
+          assets = files('vectis').joinpath('studio_assets')
+          for name in ('index.html', 'styles.css', 'app.js'):
+              assert assets.joinpath(name).is_file(), name
+          PY
 
       - name: Create or update GitHub Release
         env:

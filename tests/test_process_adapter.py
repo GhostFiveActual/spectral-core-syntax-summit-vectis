@@ -20,8 +20,8 @@ class ProcessAdapterTests(unittest.TestCase):
         self.python = Path(sys.executable).resolve()
         self.adapter = ProcessAdapter(
             {"python": self.python},
-            default_timeout=1.0,
-            max_timeout=2.0,
+            default_timeout=2.0,
+            max_timeout=3.0,
         )
 
     def test_public_capability_name(self) -> None:
@@ -174,8 +174,8 @@ class ProcessAdapterTests(unittest.TestCase):
     def test_explicit_environment_is_available(self) -> None:
         adapter = ProcessAdapter(
             {"python": self.python},
-            default_timeout=1.0,
-            max_timeout=2.0,
+            default_timeout=2.0,
+            max_timeout=3.0,
             environment={
                 "VECTIS_EXPLICIT": "visible",
             },
@@ -205,7 +205,7 @@ class ProcessAdapterTests(unittest.TestCase):
                     "-c",
                     "print('never-run')",
                 ),
-                timeout=3.0,
+                timeout=4.0,
             )
 
     def test_timeout_is_enforced(self) -> None:

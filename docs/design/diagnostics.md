@@ -1,27 +1,19 @@
 # VECTIS Diagnostic System
 
+Diagnostics are deterministic compiler/runtime data, not free-form log strings.
+
 ## Contract
 
-COMP-005 establishes one shared diagnostic model for lexical, syntax, and later
-compiler phases. Diagnostics are deterministic compiler data, not free-form
-logging strings.
+Every `Diagnostic` contains:
 
-Every diagnostic has a stable diagnostic code, severity, readable message, and
-canonical source span. The same diagnostic can be rendered for a human or
-serialized into a machine-readable dictionary.
+- a stable `DiagnosticCode`,
+- severity (`error` or `warning`),
+- a non-empty message,
+- canonical `SourceSpan` data.
 
-## Severity levels
+`Diagnostic.to_dict()` produces JSON-safe data for the CLI, Studio, and editor integrations.
 
-VECTIS defines two severity levels:
-
-- `error` — compilation cannot continue for the affected input.
-- `warning` — compilation may continue, but a condition should be surfaced.
-
-Lexer and parser failures currently use `error`.
-
-## Stable diagnostic codes
-
-The code meanings are stable and must not be silently repurposed.
+## Stable codes
 
 | Code | Meaning |
 | --- | --- |
@@ -35,55 +27,22 @@ The code meanings are stable and must not be silently repurposed.
 | `SYN005` | Unclosed block |
 | `SYN006` | Malformed citation collection |
 | `SYN007` | Reserved keyword cannot begin a statement |
+| `SEM001` | Undeclared reference |
+| `SEM002` | Duplicate declaration |
+| `SEM003` | Unknown built-in function |
+| `SEM004` | Invalid function arity |
+| `SEM005` | Type mismatch |
+| `CAP001` | Required capability unavailable |
+| `CAP002` | Invalid capability value |
 
-Future compiler phases allocate new stable diagnostic codes instead of changing
-the meaning of existing codes.
+Existing meanings must not be silently repurposed.
 
-## Source span contract
+## Source spans
 
-`Diagnostic.span` is the canonical `SourceSpan` from COMP-001. When a concrete
-offending parser token exists, the diagnostic retains that token's full source
-span. End-of-input diagnostics use a deterministic point source span after the
-final token. Lexer diagnostics use a point source span at the offending lexical
-location.
+Lexer/parser/semantic diagnostics retain the most specific available source span. End-of-input failures use a deterministic point span. Capability-registry compatibility errors that are not tied to user source use `<capability>:1:1`.
 
-## Human-readable compatibility
+## Exceptions
 
-`LexerError` and `ParserError` remain catchable `ValueError` subclasses through
-`DiagnosticError`. Existing readable exception output remains:
+`DiagnosticError` is a `ValueError` compatibility base and exposes `.diagnostic`, `.code`, `.severity`, `.message`, `.span`, `.file`, `.line`, and `.column`.
 
-`file:line:column: message`
-
-The structured diagnostic is available through `.diagnostic`. Compatibility
-properties `.code`, `.severity`, `.message`, `.span`, `.file`, `.line`, and
-`.column` are also exposed.
-
-## Machine-readable form
-
-`Diagnostic.to_dict()` and `DiagnosticError.to_dict()` return JSON-serializable
-data:
-
-~~text
-{
-  "code": "SYN003",
-  "severity": "error",
-  "message": "expected ';'",
-  "source": {
-    "file": "example.vectis",
-    "start": {"line": 2, "column": 10},
-    "end": {"line": 2, "column": 10}
-  }
-}
-~~
-
-This machine-readable form is intended for the CLI, browser playground, editor
-integrations, demo tooling, and later execution/reporting systems.
-
-## Phase integration
-
-The lexer maps malformed lexical input to `LEX001` through `LEX003`. The parser
-maps syntax failures to `SYN001` through `SYN007`.
-
-Semantic analysis will reuse the shared diagnostic type and allocate a semantic
-code range during COMP-006. Semantic diagnostics must remain attached to
-canonical source spans.
+Lexer and parser errors remain specialized subclasses while sharing the same structured payload.

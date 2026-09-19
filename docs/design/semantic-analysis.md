@@ -1,89 +1,51 @@
-```markdown
 # Semantic Analysis
 
-## Overview
+Semantic analysis is the compiler stage between parsing and execution-graph generation. It validates relationships that are syntactically valid but not meaningful under the VECTIS language contract.
 
-The semantic analyzer is a crucial component of the VECTIS compiler, responsible for validating the structure and semantics of the source code. It ensures that all declarations are correctly referenced, types are valid, and capabilities are properly utilized. The analyzer produces deterministic diagnostics to help developers identify and fix issues in their code.
+## Responsibilities
 
-## Key Features
+The semantic analyzer currently validates:
 
-1. **Reference Validation**: Ensures that all references in the code resolve to valid declarations.
-2. **Type Validation**: Validates that values have the correct types, following the VECTIS type model.
-3. **Capability Validation**: Ensures that all required capabilities are explicitly enabled and validated through capability adapters.
-4. **Diagnostic Production**: Generates detailed diagnostics with source location information to help developers understand and fix issues.
+- duplicate declarations,
+- unresolved references,
+- built-in function names,
+- built-in function arity,
+- boolean `when` conditions,
+- boolean `assert` expressions,
+- numeric `confidence` expressions,
+- selected expression type mismatches.
 
-## Detailed Workflow
+It does **not** execute a mission, acquire capabilities, or perform filesystem/process/network effects.
 
-1. **Parsing**: The source code is first parsed into an abstract syntax tree (AST) using the VECTIS lexer.
-2. **Semantic Analysis**: The AST is then traversed by the semantic analyzer to perform the following checks:
-   - **Reference Resolution**: Validates that all references (e.g., variable names, function calls) resolve to valid declarations.
-   - **Type Checking**: Ensures that all values have the correct types, following the VECTIS type model.
-   - **Capability Validation**: Checks that all required capabilities are explicitly enabled and validated through capability adapters.
-3. **Diagnostic Generation**: If any issues are found during the analysis, the semantic analyzer generates detailed diagnostics with source location information.
+## Deterministic scope
 
-## Example Usage
+Declarations enter scope in source order. A reference resolves only to a declaration that is visible at the point where the expression is analyzed. Mission and branch blocks are analyzed deterministically; semantic resolution does not use inference or external state.
 
-Here is an example of how the semantic analyzer can be used in the VECTIS compiler:
+## Value types
 
-```python
-from vectis.ast import Program, PublishStatement, StringLiteral
-from vectis.diagnostic import DiagnosticCode, error_diagnostic
-from vectis.source_span import SourceSpan
-from vectis.semantic import SemanticAnalyzer
+The current semantic type model covers scalar values used by the 0.1 language:
 
-# Create a simple program with a publish statement
-publish = PublishStatement(
-    value=StringLiteral(
-        value="output",
-        span=SourceSpan(
-            start=SourcePosition(line=1, column=1, file="test"),
-            end=SourcePosition(line=1, column=12, file="test"),
-        ),
-    ),
-    span=SourceSpan(
-        start=SourcePosition(line=1, column=1, file="test"),
-        end=SourcePosition(line=1, column=12, file="test"),
-    ),
-)
-program = Program(statements=(publish,), span=SourceSpan(
-    start=SourcePosition(line=1, column=1, file="test"),
-    end=SourcePosition(line=1, column=12, file="test"),
-))
+- string,
+- number,
+- boolean,
+- unknown/deferred when a value cannot be proven statically.
 
-# Create a semantic analyzer and analyze the program
-analyzer = SemanticAnalyzer(program)
-diagnostics = analyzer.analyze()
+Runtime evaluation may resolve a deferred value from dependency-node results, but a known semantic contradiction is rejected before compilation.
 
-# Check for diagnostics
-if diagnostics:
-    for diagnostic in diagnostics:
-        print(diagnostic.render())
-else:
-    print("No diagnostics found.")
-```
+## Function validation
 
-In this example, the semantic analyzer is used to analyze a simple program with a publish statement. If any issues are found, the diagnostics are printed to the console.
+Function calls use the shared deterministic built-in registry from `vectis.evaluator`. Unknown names produce `SEM003`; invalid arity produces `SEM004`.
 
-## Conclusion
+The analyzer validates function shape without executing external effects because all standard built-ins are pure.
 
-The semantic analyzer is a vital part of the VECTIS compiler, ensuring that the source code is valid and free of errors. By following the VECTIS type model and validating references, types, and capabilities, the semantic analyzer helps developers write correct and efficient code.
-```
+## Diagnostics
 
-## Semantic Scope and Resolution
+Semantic failures use stable `SEMxxx` diagnostics with canonical source spans:
 
-Semantic analysis uses deterministic lexical scope. The program establishes
-the outer scope, while nested mission and conditional blocks establish child
-scope boundaries. A reference resolves from the innermost active scope outward
-to enclosing declarations. A declaration that exists only inside a child scope
-does not implicitly become visible outside that block.
+- `SEM001` unresolved reference,
+- `SEM002` duplicate declaration,
+- `SEM003` unknown function,
+- `SEM004` invalid function arity,
+- `SEM005` type mismatch.
 
-Type validation, reference resolution, and capability validation are semantic
-operations performed before IR generation. Any invalid semantic relationship
-produces a deterministic diagnostic tied to the source span represented by the
-AST. The semantic analyzer does not execute capabilities and does not grant
-runtime authority; capability enforcement remains the responsibility of the
-runtime and explicit adapters.
-
-This separation keeps semantic meaning deterministic: source structure,
-scope, references, types, capabilities, and diagnostics are resolved through
-defined compiler rules rather than probabilistic inference.
+The semantic result is deterministic for the same AST.

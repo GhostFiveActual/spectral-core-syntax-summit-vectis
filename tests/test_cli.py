@@ -70,9 +70,17 @@ class CliTests(unittest.TestCase):
 
         for command in (
             "check",
+            "tokens",
             "parse",
             "plan",
+            "inspect",
             "run",
+            "fmt",
+            "builtins",
+            "capabilities",
+            "doctor",
+            "studio",
+            "app",
         ):
             self.assertIn(command, help_text)
 
@@ -81,7 +89,7 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertIn(
-            "VECTIS deterministic language toolchain",
+            "VECTIS deterministic language, runtime, and Studio toolchain",
             stdout,
         )
         self.assertEqual(stderr, "")

@@ -31,7 +31,7 @@ boolean literals. Other identifier spellings are `Reference` nodes.
 
 ## Canonical AST mapping
 
-The parser constructs only the canonical AST types established by COMP-003.
+The parser constructs only the canonical AST types.
 It does not redefine compiler primitives.
 
 `mission` maps to `Mission`, `source` to `SourceDeclaration`, `analyze` to

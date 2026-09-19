@@ -14,7 +14,7 @@ from vectis.parser import parse
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "examples" / "demo" / "demo.vectis"
 RUNNER = ROOT / "examples" / "demo" / "run_demo.py"
-DOC = ROOT / "docs" / "submission" / "demo.md"
+DOC = ROOT / "docs" / "demo.md"
 
 
 def _source() -> str:
@@ -23,7 +23,7 @@ def _source() -> str:
 
 def _load_runner():
     spec = importlib.util.spec_from_file_location(
-        "vectis_submission_demo_runner",
+        "vectis_demo_runner",
         RUNNER,
     )
 
@@ -35,7 +35,7 @@ def _load_runner():
     return module
 
 
-class TestSubmissionDemo(unittest.TestCase):
+class TestDemo(unittest.TestCase):
     def test_required_demo_artifacts_exist(self):
         for path in (DEMO, RUNNER, DOC):
             with self.subTest(path=path):

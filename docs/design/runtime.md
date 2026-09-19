@@ -1,273 +1,60 @@
-```markdown
 # Runtime Design
 
-## Overview
+The runtime executes the typed `ExecutionGraph` produced by the compiler. Raw VECTIS source is never interpreted directly by the runtime.
 
-The runtime component of VECTIS is responsible for executing the compiled graph of nodes and edges. It ensures that the graph is executed in a deterministic manner, tracks the state of each node, and propagates failures appropriately. This document outlines the design and implementation details of the runtime.
+## Scheduling
 
-## Key Features
+`ExecutionGraph.topological_order()` supplies deterministic scheduling. Dependency edges enforce data/guard ordering; true and false edges enforce branch activation.
 
-1. **Graph Execution**: The runtime executes the graph in a topological order, ensuring that all dependencies are resolved before a node is executed.
-2. **Deterministic Scheduling**: The runtime uses the graph's topological order to determine the execution sequence, ensuring that the same execution order is followed every time the graph is executed.
-3. **Node State Tracking**: The runtime tracks the state of each node (e.g., succeeded, failed, blocked, dry-run) and provides methods to retrieve this state.
-4. **Failure Propagation**: The runtime propagates failures from failed nodes to their dependent nodes, ensuring that the entire graph is executed correctly.
-5. **Dry-Run Support**: The runtime supports dry-run mode, where no handlers are invoked, but the execution order and states are still tracked.
-6. **Runtime Tests**: The runtime includes a set of tests to verify its correctness and ensure that it behaves as expected.
+A node can finish in one of the public runtime states:
 
-## Implementation
+- `succeeded`,
+- `failed`,
+- `blocked`,
+- `skipped`,
+- `dry-run`.
 
-The runtime is implemented in the `src/vectis/runtime.py` file. It consists of the following components:
+Failed dependencies block downstream work. Nodes on an inactive conditional branch are skipped.
 
-1. **Runtime Class**: The main class that manages the execution of the graph.
-2. **NodeState Enum**: An enumeration that defines the possible states of a node.
-3. **RuntimeResult Class**: A class that encapsulates the result of a runtime execution.
+## Runtime values
 
-### Runtime Class
+Source declarations and `let` declarations produce scalar values. Runtime expression evaluation resolves references from values produced by dependency nodes. This supports expressions such as:
 
-The `Runtime` class is responsible for executing the graph. It takes a graph and a dictionary of handlers as input. The handlers are functions that are invoked when a node is executed.
-
-```python
-from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Tuple
-
-from vectis.ir import ExecutionGraph, GraphNode, NodeKind
-from vectis.runtime import RuntimeResult, NodeState
-
-class Runtime:
-    def __init__(
-        self,
-        graph: ExecutionGraph,
-        handlers: Dict[NodeKind, Callable[[GraphNode], None]] = {},
-        dry_run: bool = False,
-    ) -> None:
-        self.graph = graph
-        self.handlers = handlers
-        self.dry_run = dry_run
-        self.state: Dict[str, NodeState] = {node.id: NodeState.PENDING for node in graph.nodes}
-        self.execution_order: List[str] = []
-
-    def execute(self) -> RuntimeResult:
-        try:
-            self._topological_sort()
-            self._execute_nodes()
-            return RuntimeResult(
-                success=True,
-                status="success",
-                execution_order=self.execution_order,
-                state=self.state,
-            )
-        except Exception as e:
-            return RuntimeResult(
-                success=False,
-                status="failure",
-                failure=str(e),
-                execution_order=self.execution_order,
-                state=self.state,
-            )
-
-    def _topological_sort(self) -> None:
-        visited = set()
-        stack = []
-
-        def visit(node_id: str) -> None:
-            if node_id in visited:
-                return
-            visited.add(node_id)
-            for edge in self.graph.edges:
-                if edge.source == node_id:
-                    visit(edge.target)
-            stack.append(node_id)
-
-        for node_id in self.graph.nodes:
-            visit(node_id)
-
-        self.execution_order = stack[::-1]
-
-    def _execute_nodes(self) -> None:
-        for node_id in self.execution_order:
-            node = next(node for node in self.graph.nodes if node.id == node_id)
-            if self.state[node_id] == NodeState.PENDING:
-                if self.dry_run:
-                    self.state[node_id] = NodeState.DRY_RUN
-                else:
-                    self.state[node_id] = NodeState.RUNNING
-                    if node.kind in self.handlers:
-                        self.handlers[node.kind](node)
-                    self.state[node_id] = NodeState.SUCCEEDED
+```vectis
+let approved score >= 90 && length(name) > 0;
 ```
 
-### NodeState Enum
+without using Python `eval` or `exec`.
 
-The `NodeState` enum defines the possible states of a node.
+The compiler and runtime use the same pure expression evaluator to keep constant folding and runtime evaluation aligned.
 
-```python
-from enum import Enum
+## Assertions
 
-class NodeState(Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    BLOCKED = "blocked"
-    SKIPPED = "skipped"
-    DRY_RUN = "dry-run"
-```
+`assert expression;` is a deterministic guard. The expression must be boolean. A false assertion fails the assertion node, and later statements in the same block are dependency-gated so they become blocked.
 
-### RuntimeResult Class
+## Capabilities
 
-The `RuntimeResult` class encapsulates the result of a runtime execution.
+The runtime receives an explicit capability set. `require` and `request` statements compare their resolved capability name against that set and fail closed when authority is unavailable.
 
-```python
-from dataclasses import dataclass
-from typing import List, Optional
+A capability grant is only authorization metadata. External effects require a configured handler/adapter.
 
-class RuntimeResult:
-    def __init__(
-        self,
-        success: bool,
-        status: str,
-        execution_order: List[str],
-        state: Dict[str, NodeState],
-        failure: Optional[str] = None,
-    ) -> None:
-        self.success = success
-        self.status = status
-        self.execution_order = execution_order
-        self.state = state
-        self.failure = failure
-```
+## Handlers
 
-## Testing
+Embedding applications may attach handlers for graph-node kinds. Handlers are where host-specific effects belong. VECTIS keeps that boundary explicit so compiler/runtime semantics remain deterministic even when an application integrates external systems.
 
-The runtime includes a set of tests to verify its correctness. These tests are located in the `tests/runtime/test_runtime.py` file.
+## Dry run
 
-```python
-import unittest
-from vectis.ir import ExecutionGraph, GraphNode, NodeKind
-from vectis.runtime import Runtime, NodeState, RuntimeResult
+Dry run schedules the graph and reports dry-run states without invoking effect handlers. It is an inspection mechanism, not a guarantee that external infrastructure would succeed during a real execution.
 
-class TestRuntime(unittest.TestCase):
-    def test_deterministic_scheduling_uses_graph_order(self):
-        graph = ExecutionGraph(
-            nodes=(
-                GraphNode(id="source", kind=NodeKind.SOURCE),
-                GraphNode(id="analyze", kind=NodeKind.ANALYZE),
-                GraphNode(id="publish", kind=NodeKind.PUBLISH),
-            ),
-            edges=(
-                GraphEdge(source="source", target="analyze"),
-                GraphEdge(source="analyze", target="publish"),
-            ),
-        )
-        seen = []
+## Runtime result
 
-        runtime = Runtime(
-            graph,
-            handlers={
-                NodeKind.SOURCE: lambda node: seen.append(node.id),
-                NodeKind.ANALYZE: lambda node: seen.append(node.id),
-                NodeKind.PUBLISH: lambda node: seen.append(node.id),
-            },
-        )
+The public result includes:
 
-        result = runtime.execute()
+- `success`,
+- `dry_run`,
+- execution order,
+- node states,
+- resolved node values,
+- failures.
 
-        self.assertTrue(result.success)
-        self.assertEqual(result.execution_order, ["source", "analyze", "publish"])
-        self.assertEqual(seen, ["source", "analyze", "publish"])
-
-    def test_node_state_tracking_records_success(self):
-        result = Runtime(
-            ExecutionGraph(
-                nodes=(
-                    GraphNode(id="source", kind=NodeKind.SOURCE),
-                    GraphNode(id="analyze", kind=NodeKind.ANALYZE),
-                    GraphNode(id="publish", kind=NodeKind.PUBLISH),
-                ),
-                edges=(
-                    GraphEdge(source="source", target="analyze"),
-                    GraphEdge(source="analyze", target="publish"),
-                ),
-            )
-        ).execute()
-
-        self.assertIs(result.state_for("source"), NodeState.SUCCEEDED)
-        self.assertIs(result.state_for("analyze"), NodeState.SUCCEEDED)
-        self.assertIs(result.state_for("publish"), NodeState.SUCCEEDED)
-
-    def test_failure_propagates_to_dependents(self):
-        graph = ExecutionGraph(
-            nodes=(
-                GraphNode(id="source", kind=NodeKind.SOURCE),
-                GraphNode(id="analyze", kind=NodeKind.ANALYZE),
-                GraphNode(id="publish", kind=NodeKind.PUBLISH),
-            ),
-            edges=(
-                GraphEdge(source="source", target="analyze"),
-                GraphEdge(source="analyze", target="publish"),
-            ),
-        )
-
-        def fail(_node):
-            raise ValueError("intentional failure")
-
-        result = Runtime(
-            graph,
-            handlers={
-                NodeKind.ANALYZE: fail,
-            },
-        ).execute()
-
-        self.assertFalse(result.success)
-
-        self.assertIs(result.state_for("source"), NodeState.SUCCEEDED)
-        self.assertIs(result.state_for("analyze"), NodeState.FAILED)
-        self.assertIs(result.state_for("publish"), NodeState.BLOCKED)
-
-        self.assertIsNotNone(result.failure_for("analyze"))
-        self.assertIsNotNone(result.failure_for("publish"))
-
-    def test_dry_run_invokes_no_handlers(self):
-        graph = ExecutionGraph(
-            nodes=(
-                GraphNode(id="source", kind=NodeKind.SOURCE),
-                GraphNode(id="analyze", kind=NodeKind.ANALYZE),
-                GraphNode(id="publish", kind=NodeKind.PUBLISH),
-            ),
-            edges=(
-                GraphEdge(source="source", target="analyze"),
-                GraphEdge(source="analyze", target="publish"),
-            ),
-        )
-        called = []
-
-        def handler(node):
-            called.append(node.id)
-
-        result = Runtime(
-            graph,
-            handlers={
-                NodeKind.SOURCE: handler,
-                NodeKind.ANALYZE: handler,
-                NodeKind.PUBLISH: handler,
-            },
-            dry_run=True,
-        ).execute()
-
-        self.assertTrue(result.success)
-        self.assertTrue(result.dry_run)
-        self.assertEqual(called, [])
-
-        self.assertEqual(result.execution_order, ["source", "analyze", "publish"])
-
-        for node_id in graph.nodes:
-            self.assertIs(result.state_for(node_id), NodeState.DRY_RUN)
-```
-
-## Conclusion
-
-The runtime component of VECTIS is designed to execute the compiled graph in a deterministic manner, track the state of each node, and propagate failures appropriately. The implementation includes a `Runtime` class, a `NodeState` enum, and a `RuntimeResult` class. The runtime also includes a set of tests to verify its correctness.
-
-The runtime consumes the canonical execution graph and follows its deterministic dependency and branch ordering during execution.
-
-Capability enforcement is explicit: runtime execution denies an unavailable required or requested capability rather than granting implicit external authority.
+The CLI and VECTIS Studio expose this same contract.

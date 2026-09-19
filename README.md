@@ -4,60 +4,32 @@
 
 ### Ghost Five // Spectral Core
 
-**A deterministic, capability-aware language and execution toolchain for auditable automation.**
+**Deterministic automation you can inspect before it runs.**
 
-[![CI](https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis/actions/workflows/ci.yml/badge.svg)](https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/release-v0.0.1-0f766e)](https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis/releases/tag/v0.0.1)
-[![Python](https://img.shields.io/badge/python-3.14_verified-0f766e)](https://www.python.org/)
+`source → parse → validate → plan → authorize → execute`
 
 </div>
 
 ---
 
-VECTIS is a domain-specific language for describing deterministic missions, validating them before execution, compiling them into an explicit execution graph, and running them through a capability-constrained runtime.
+VECTIS is a deterministic, capability-aware domain-specific language and execution toolchain for building auditable automation. A VECTIS mission is parsed into a typed AST, semantically validated, compiled into an explicit execution graph, and executed through a runtime that keeps external authority behind named capability boundaries.
 
-The project is developed by **Ghost Five // Spectral Core** with a simple design rule: automation should be inspectable before it executes and authority should be explicit rather than implied.
+The current development line is **0.1.0.dev0**, targeting the first public-preview release. The existing **v0.0.1** tag remains the frozen engineering baseline.
 
-## Why VECTIS
-
-VECTIS is built around a few deliberate properties:
-
-- **Deterministic compilation** — the same valid source produces the same execution graph.
-- **Semantic validation before execution** — invalid references and type errors are rejected before runtime work begins.
-- **Explicit execution graphs** — dependencies and conditional branches are visible and serializable.
-- **Capability-aware runtime boundaries** — external authority is declared and unavailable capability is denied.
-- **Dry-run support** — inspect scheduling without invoking runtime handlers.
-- **Structured diagnostics** — lexer, parser, semantic, and runtime failures preserve useful source context.
-- **No dynamic `eval`/`exec` execution path** — runtime behavior stays inside explicit language and adapter boundaries.
-
-## Quick start
-
-```bash
-git clone https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis.git
-cd spectral-core-syntax-summit-vectis
-
-python3 -m venv .venv
-source .venv/bin/activate
-
-python -m pip install --upgrade pip
-python -m pip install -e .
-```
-
-Confirm the CLI:
-
-```bash
-vectis --version
-vectis --help
-```
-
-## Your first VECTIS mission
+## What VECTIS looks like
 
 ```vectis
-mission "Deploy when ready" {
-    source deployment_ready true;
-    source message "VECTIS is operational";
+mission "Release gate" {
+    source ready true;
+    source quality_score 0.96;
 
-    when deployment_ready {
+    let product upper("vectis");
+    let approved ready && quality_score >= 0.90;
+    let message concat(product, " READY");
+
+    assert quality_score >= 0.80;
+
+    when approved {
         publish message;
     } otherwise {
         request "manual-review";
@@ -65,14 +37,36 @@ mission "Deploy when ready" {
 }
 ```
 
-Save the source as `mission.vectis`, then inspect it progressively:
+VECTIS can validate that source, show the tokens and AST, compile an execution graph, dry-run the schedule, execute it, and expose the resolved value of each runtime node.
+
+## Why VECTIS
+
+- **Deterministic planning** — valid source lowers to an explicit, serializable execution graph.
+- **Pre-execution validation** — syntax, references, function calls, arity, and selected type rules are checked before a graph is produced.
+- **Runtime expression evaluation** — references, arithmetic, comparisons, boolean logic, and pure built-in functions resolve from actual node values.
+- **Explicit branch gating** — every node in a `when` or `otherwise` branch is gated by the condition node.
+- **Assertions** — `assert` can stop and block subsequent work when an invariant fails.
+- **Capability boundaries** — filesystem, process, and HTTP authority remain opt-in instead of implicit.
+- **No dynamic Python execution** — VECTIS does not use Python `eval`, `exec`, or implicit shell execution for language evaluation.
+- **Local-first Studio** — VECTIS ships with a browser-based application served directly by the installed package, with no CDN dependency.
+
+## Install for development
 
 ```bash
-vectis check mission.vectis
-vectis parse mission.vectis
-vectis plan mission.vectis
-vectis run --dry-run mission.vectis
-vectis run mission.vectis
+git clone https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis.git
+cd spectral-core-syntax-summit-vectis
+
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+Then:
+
+```bash
+vectis --version
+vectis doctor
 ```
 
 ## CLI
@@ -80,90 +74,141 @@ vectis run mission.vectis
 | Command | Purpose |
 | --- | --- |
 | `vectis check FILE` | Validate syntax and semantics. |
-| `vectis parse FILE` | Parse source and emit the AST as JSON. |
-| `vectis plan FILE` | Compile source into the deterministic execution graph. |
-| `vectis run --dry-run FILE` | Inspect deterministic scheduling without runtime side effects. |
-| `vectis run FILE` | Execute the compiled graph through the VECTIS runtime. |
-| `vectis --version` | Print the installed VECTIS version. |
+| `vectis tokens FILE` | Emit the deterministic lexer token stream. |
+| `vectis parse FILE` | Emit the typed AST as JSON. |
+| `vectis plan FILE` | Compile and emit the execution graph. |
+| `vectis inspect FILE` | Emit tokens, AST, diagnostics, and graph in one document. |
+| `vectis run FILE` | Execute a compiled mission. |
+| `vectis run --dry-run FILE` | Show deterministic runtime scheduling without handlers. |
+| `vectis run --capability NAME FILE` | Grant an explicit named runtime capability. |
+| `vectis fmt FILE` | Print canonical VECTIS formatting. |
+| `vectis fmt --check FILE` | Verify canonical formatting. |
+| `vectis fmt --write FILE` | Rewrite a file canonically. |
+| `vectis builtins` | List deterministic built-in functions. |
+| `vectis capabilities` | List standard capability names. |
+| `vectis doctor` | Inspect the local VECTIS/Python environment. |
+| `vectis studio` | Launch VECTIS Studio. |
+| `vectis app` | Alias for VECTIS Studio. |
+
+## Built-in functions
+
+The 0.1 language line introduces deterministic pure function calls:
+
+```text
+upper(text)          lower(text)          trim(text)
+length(text)         concat(value, ...)   contains(text, part)
+starts_with(a, b)    ends_with(a, b)      abs(number)
+round(number, n?)    min(number, ...)     max(number, ...)
+string(value)        number(value)        boolean(value)
+```
+
+Built-ins do not receive filesystem, process, or network authority. Their only inputs are evaluated VECTIS scalar values.
+
+## Operators
+
+```text
+||
+&&
+==  !=
+>  >=  <  <=
++  -
+*  /  %
+!  unary +  unary -
+```
+
+`+` supports numeric addition and string-to-string concatenation. Other arithmetic operators require numbers.
+
+## VECTIS Studio
+
+Launch:
+
+```bash
+vectis studio
+```
+
+Studio opens on loopback by default and provides:
+
+- Ghost Five / Spectral Core product UI,
+- mission source editor with line numbers and keyboard shortcuts,
+- Check / Plan / Run / Format actions,
+- execution graph visualization,
+- runtime states and resolved node values,
+- AST and raw plan inspection,
+- diagnostics,
+- example missions,
+- built-in function reference.
+
+Studio refuses non-loopback binding unless `--allow-remote` is explicitly supplied.
 
 ## Execution model
 
 ```text
 VECTIS source
-     |
-     v
-   Lexer
-     |
-     v
-   Parser
-     |
-     v
-     AST
-     |
-     v
+     ↓
+Lexer
+     ↓
+Parser
+     ↓
+Typed AST
+     ↓
 Semantic analysis
-     |
-     v
+     ↓
 Execution graph
-     |
-     v
-Deterministic runtime
-     |
-     v
+     ↓
+Deterministic expression/runtime engine
+     ↓
 Explicit capability adapters
 ```
 
-The execution graph is the boundary between language meaning and runtime behavior. Dependencies, branch edges, and node values are explicit rather than hidden inside an opaque interpreter loop.
+The execution graph is the stable boundary between language meaning and runtime scheduling. Runtime handlers and capability adapters are explicit extension points rather than hidden behavior.
 
-## Capability model
-
-Capabilities are opt-in runtime authority. VECTIS does not treat the presence of a language statement as permission to perform an external action.
-
-The current adapter layer includes controlled interfaces for:
-
-- filesystem operations,
-- process execution,
-- HTTP requests.
-
-Adapters enforce their own boundary rules such as filesystem root containment, process executable allowlists, no implicit parent-environment inheritance, structured process arguments, HTTP scheme restrictions, timeout limits, and explicit capability availability.
-
-See [Architecture: Security](docs/architecture/security.md) for the detailed contract.
-
-## Package and release validation
-
-The v0.0.1 baseline has been validated through:
-
-- the complete repository quality gate,
-- 311 automated tests at the release baseline,
-- a clean clone on a second Ghost Five system,
-- editable package installation,
-- independent VECTIS source authoring,
-- source-reference conditional execution,
-- isolated wheel and source-distribution builds,
-- wheel installation into a fresh virtual environment,
-- out-of-tree CLI execution from `/tmp`.
-
-CI repeats the repository quality gate and package smoke path for future changes.
-
-## Repository map
+## Repository structure
 
 ```text
-src/vectis/             Core language, compiler, runtime, and adapters
-examples/               Valid, invalid, and end-to-end VECTIS examples
+src/vectis/             Language, compiler, evaluator, runtime, adapters, Studio
+src/vectis/studio_assets/
+                        Packaged local-first Studio UI
+examples/               Canonical valid/invalid/demo programs
 docs/
-  architecture/         Compiler, runtime, and security architecture
-  design/               Design decisions and implementation contracts
-  spec/                 Language specification and grammar
-  playground/           Browser playground contract and assets
-  release/              Release records and changelog material
-  submission/           Original project/submission provenance
-tests/                  Language, runtime, adapter, security, and UX tests
-tools/                  Quality and engineering automation
-competition/            Historical autonomous-build provenance
-.github/                 CI, release automation, templates, and ownership
+  architecture/         System architecture and trust boundaries
+  design/               Component design contracts
+  qa/                   Conformance/security records
+  release/              Release notes, history, public-release checklist
+  spec/                 Normative language specification
+  ux/                   UX and diagnostics guidance
+tests/                  Product, language, runtime, security, Studio tests
+tools/                  Product quality and conformance tooling
+.github/                 CI, release automation, ownership and templates
 ```
 
-The product-facing implementation lives in `src/vectis/`. Historical competition and autonomous-build records are retained for provenance but are not required to understand the public VECTIS API.
+Internal autonomous build-state, competition task contracts, controller code, and original submission material are intentionally **not part of the public product tree**.
+
+## Development quality gate
+
+```bash
+bash tools/quality-gate.sh
+```
+
+The gate compiles the package, runs the full test suite, imports every VECTIS module, verifies the public-repository boundary, checks whitespace, scans common secret patterns, and checks the repository symlink boundary.
+
+## Packaging
+
+```bash
+python -m pip install build
+python -m build
+```
+
+The package includes the VECTIS Studio HTML/CSS/JavaScript assets so `vectis studio` works from an installed wheel rather than requiring a source checkout.
+
+## Security model
+
+VECTIS intentionally separates language evaluation from privileged adapters. Standard capability names currently include:
+
+- `filesystem`
+- `process`
+- `http`
+
+See [Security architecture](docs/architecture/security.md) and [Security policy](SECURITY.md).
 
 ## Documentation
 
@@ -171,68 +216,21 @@ Start with:
 
 - [Quickstart](docs/quickstart.md)
 - [User guide](docs/user-guide.md)
-- [Documentation index](docs/README.md)
+- [Language grammar](docs/spec/grammar.md)
+- [Lexical specification](docs/spec/lexical-spec.md)
+- [Semantic model](docs/spec/semantic-model.md)
 - [Architecture overview](docs/architecture/overview.md)
-- [Compiler pipeline](docs/architecture/compiler-pipeline.md)
-- [Runtime architecture](docs/architecture/runtime.md)
-- [Security architecture](docs/architecture/security.md)
-- [Grammar](docs/spec/grammar.md)
-- [Release notes](docs/release/RELEASE.md)
-- [Changelog](docs/release/CHANGELOG.md)
+- [VECTIS Studio](docs/studio.md)
+- [Public release checklist](docs/release/PUBLIC_RELEASE_CHECKLIST.md)
+- [Roadmap](ROADMAP.md)
 
-## Development
+## Release status
 
-Run the authoritative repository gate:
+- `v0.0.1` — frozen engineering baseline.
+- `0.1.0.dev0` — current development snapshot for the first public preview.
+- `v0.1.0` — intended first public-preview release after release-gate completion.
 
-```bash
-bash tools/quality-gate.sh
-```
-
-Run the core Python suite directly:
-
-```bash
-python3 -m unittest discover -v
-```
-
-Build distributable artifacts:
-
-```bash
-python -m pip install build
-python -m build
-```
-
-The GitHub CI workflow performs the quality gate, package build, isolated wheel install, and an out-of-tree VECTIS runtime smoke test.
-
-## Security
-
-VECTIS is designed around explicit capability boundaries and deterministic execution, but security issues should not be disclosed through a public issue before coordinated review.
-
-See [SECURITY.md](SECURITY.md).
-
-## Contributing
-
-Contributions should preserve determinism, explicit authority boundaries, diagnostics, and the existing execution-graph contract.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Release
-
-Current release: **v0.0.1**
-
-Release artifacts are built as:
-
-- `vectis_lang-0.0.1-py3-none-any.whl`
-- `vectis_lang-0.0.1.tar.gz`
-
-See the [GitHub Releases](https://github.com/GhostFiveActual/spectral-core-syntax-summit-vectis/releases) page for packaged artifacts.
-
-## Ghost Five
-
-**VECTIS** is a **Spectral Core** product within **Ghost Five**.
-
-Spectral Core focuses on software engineering and systems that answer a practical question: **Can we build it?**
-
-VECTIS applies that approach to deterministic automation: define the mission, validate the language, inspect the graph, constrain authority, then execute.
+A public/open-source release still requires an explicit **license decision**. No license is implied by this repository until one is deliberately added.
 
 ---
 
@@ -240,6 +238,6 @@ VECTIS applies that approach to deterministic automation: define the mission, va
 
 **Ghost Five // Spectral Core // VECTIS**
 
-Deterministic automation. Explicit authority. Inspectable execution.
+**Define the mission. Inspect the graph. Constrain authority. Execute.**
 
 </div>
